@@ -79,6 +79,10 @@ class RemoteCommand:
         return struct.unpack('<I', self.rd(4))[0]
     def wr_uint32(self, i):
         self.fout.write(struct.pack('<I', i))
+    def rd_uint64(self):
+        return struct.unpack('<Q', self.rd(8))[0]
+    def wr_uint64(self, i):
+        self.fout.write(struct.pack('<Q', i))
     def rd_int32(self):
         return struct.unpack('<i', self.rd(4))[0]
     def wr_int32(self, i):
@@ -170,7 +174,7 @@ class RemoteFS:
                 name = self.cmd.rd_str()
                 if name:
                     type = self.cmd.rd_uint32()
-                    inode = self.cmd.rd_uint32()
+                    inode = self.cmd.rd_uint64()
                     self.cmd.end()
                     yield (name, type, inode)
                 else:
@@ -307,6 +311,10 @@ class PyboardCommand:
         return struct.unpack('<I', self.rd(4))[0]
     def wr_uint32(self, i):
         self.fout.write(struct.pack('<I', i))
+    def rd_uint64(self):
+        return struct.unpack('<Q', self.rd(8))[0]
+    def wr_uint64(self, i):
+        self.fout.write(struct.pack('<Q', i))
     def rd_int32(self):
         return struct.unpack('<i', self.fin.read(4))[0]
     def wr_int32(self, i):
@@ -356,7 +364,7 @@ def do_ilistdir_next(cmd):
         stat = os.stat(entry)
         cmd.wr_str(entry)
         cmd.wr_uint32(stat.st_mode & 0xc000)
-        cmd.wr_uint32(stat.st_ino)
+        cmd.wr_uint64(stat.st_ino)
     else:
         cmd.wr_str('')
 
