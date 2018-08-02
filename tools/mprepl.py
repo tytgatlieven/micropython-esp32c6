@@ -19,6 +19,7 @@ import struct
 import select
 import pyboard
 from pathlib import Path
+import serial.tools.list_ports
 try:
     import termios
     import select
@@ -418,7 +419,14 @@ cmd_table = {
 
 def main_loop(console, dev, pyfile=None):
     # TODO add option to not restart pyboard, to continue a previous session
-    pyb = pyboard.Pyboard(dev)
+    try:
+        pyb = pyboard.Pyboard(dev)
+    except pyboard.PyboardError:
+        port = list(serial.tools.list_ports.grep(dev))
+        if not port:
+            raise
+        pyb = pyboard.Pyboard(port[0].device)
+
     pyb.enter_raw_repl()
     pyb.exec_(fs_hook_code)
     pyb.exit_raw_repl()
