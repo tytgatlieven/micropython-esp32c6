@@ -17,7 +17,6 @@ import sys
 import time
 import struct
 import select
-import pyboard
 from pathlib import Path
 import serial.tools.list_ports
 try:
@@ -27,6 +26,13 @@ except ImportError:
     termios = None
     select = None
     import msvcrt
+
+tools=Path(__file__).parent
+if tools not in sys.path:
+    sys.path.append(tools)
+
+import pyboard
+
 
 CMD_STAT = 1
 CMD_ILISTDIR_START = 2
