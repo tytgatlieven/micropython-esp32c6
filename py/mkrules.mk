@@ -128,10 +128,6 @@ $(BUILD)/genhdr/cmodules.h: | $(HEADER_BUILD)/mpversion.h
 	@$(ECHO) "GEN $@"
 	$(Q)$(GEN_CMODULES) $(USER_C_MODULES) > $@
 
-# make sure C modules are put in the build directory
-$(BUILD)/cmodules:
-	@$(LN) -sf "$(realpath $(USER_C_MODULES))" $(BUILD)/cmodules
-
 ifneq ($(PROG),)
 # Build a standalone executable (unix does this)
 

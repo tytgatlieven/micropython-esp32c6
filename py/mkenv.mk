@@ -41,7 +41,6 @@ RM = rm
 ECHO = @echo
 CP = cp
 MKDIR = mkdir
-LN = ln
 SED = sed
 PYTHON = python
 
