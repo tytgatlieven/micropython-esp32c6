@@ -816,6 +816,9 @@ static inline mp_obj_dict_t *mp_obj_module_get_globals(mp_obj_t module) {
 // check if given module object is a package
 bool mp_obj_is_package(mp_obj_t module);
 
+// declare a module as a builtin, handled by makemoduledefs.py
+#define MP_REGISTER_MODULE(name, ref, guard)
+
 // staticmethod and classmethod types; defined here so we can make const versions
 // this structure is used for instances of both staticmethod and classmethod
 typedef struct _mp_obj_static_class_method_t {
