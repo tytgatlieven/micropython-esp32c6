@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "genhdr/moduledefs.h"
+// #include "genhdr/moduledefs.h"
 
 #include "py/objmodule.h"
 #include "py/runtime.h"
@@ -133,106 +133,127 @@ mp_obj_t mp_obj_new_module(qstr module_name) {
 /******************************************************************************/
 // Global module table and related functions
 
-STATIC const mp_rom_map_elem_t mp_builtin_module_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___main__), MP_ROM_PTR(&mp_module___main__) },
-    { MP_ROM_QSTR(MP_QSTR_builtins), MP_ROM_PTR(&mp_module_builtins) },
-    { MP_ROM_QSTR(MP_QSTR_micropython), MP_ROM_PTR(&mp_module_micropython) },
+// MP_REGISTER_MODULE
+
+extern const char _smoduledefs[];
+extern const char _emoduledefs[];
+
+// static const size_t _smoduledefs_addr = (size_t) &_smoduledefs;
+// static const size_t _emoduledefs_addr = (size_t) &_emoduledefs;
+
+STATIC const mp_rom_map_elem_t *mp_builtin_module_table = (mp_rom_map_elem_t *)&_smoduledefs;
+
+// STATIC const mp_rom_map_elem_t mp_builtin_module_table[] = {
+MP_REGISTER_MODULE(MP_QSTR___main__, mp_module___main__);
+MP_REGISTER_MODULE(MP_QSTR_builtins, mp_module_builtins);
+MP_REGISTER_MODULE(MP_QSTR_micropython, mp_module_micropython);
 
 #if MICROPY_PY_IO
-    { MP_ROM_QSTR(MP_QSTR_uio), MP_ROM_PTR(&mp_module_io) },
+    MP_REGISTER_MODULE(MP_QSTR_uio, mp_module_io);
 #endif
 #if MICROPY_PY_COLLECTIONS
-    { MP_ROM_QSTR(MP_QSTR_ucollections), MP_ROM_PTR(&mp_module_collections) },
+    MP_REGISTER_MODULE(MP_QSTR_ucollections, mp_module_collections);
 #endif
 #if MICROPY_PY_STRUCT
-    { MP_ROM_QSTR(MP_QSTR_ustruct), MP_ROM_PTR(&mp_module_ustruct) },
+    MP_REGISTER_MODULE(MP_QSTR_ustruct, mp_module_ustruct);
 #endif
 
 #if MICROPY_PY_BUILTINS_FLOAT
 #if MICROPY_PY_MATH
-    { MP_ROM_QSTR(MP_QSTR_math), MP_ROM_PTR(&mp_module_math) },
+    MP_REGISTER_MODULE(MP_QSTR_math, mp_module_math);
 #endif
 #if MICROPY_PY_BUILTINS_COMPLEX && MICROPY_PY_CMATH
-    { MP_ROM_QSTR(MP_QSTR_cmath), MP_ROM_PTR(&mp_module_cmath) },
+    MP_REGISTER_MODULE(MP_QSTR_cmath, mp_module_cmath);
 #endif
 #endif
 #if MICROPY_PY_SYS
-    { MP_ROM_QSTR(MP_QSTR_sys), MP_ROM_PTR(&mp_module_sys) },
+    MP_REGISTER_MODULE(MP_QSTR_sys, mp_module_sys);
 #endif
 #if MICROPY_PY_GC && MICROPY_ENABLE_GC
-    { MP_ROM_QSTR(MP_QSTR_gc), MP_ROM_PTR(&mp_module_gc) },
+    MP_REGISTER_MODULE(MP_QSTR_gc, mp_module_gc);
 #endif
 #if MICROPY_PY_THREAD
-    { MP_ROM_QSTR(MP_QSTR__thread), MP_ROM_PTR(&mp_module_thread) },
+    MP_REGISTER_MODULE(MP_QSTR__thread, mp_module_thread);
 #endif
 
     // extmod modules
 
 #if MICROPY_PY_UERRNO
-    { MP_ROM_QSTR(MP_QSTR_uerrno), MP_ROM_PTR(&mp_module_uerrno) },
+    MP_REGISTER_MODULE(MP_QSTR_uerrno, mp_module_uerrno);
 #endif
 #if MICROPY_PY_UCTYPES
-    { MP_ROM_QSTR(MP_QSTR_uctypes), MP_ROM_PTR(&mp_module_uctypes) },
+    MP_REGISTER_MODULE(MP_QSTR_uctypes, mp_module_uctypes);
 #endif
 #if MICROPY_PY_UZLIB
-    { MP_ROM_QSTR(MP_QSTR_uzlib), MP_ROM_PTR(&mp_module_uzlib) },
+    MP_REGISTER_MODULE(MP_QSTR_uzlib, mp_module_uzlib);
 #endif
 #if MICROPY_PY_UJSON
-    { MP_ROM_QSTR(MP_QSTR_ujson), MP_ROM_PTR(&mp_module_ujson) },
+    MP_REGISTER_MODULE(MP_QSTR_ujson, mp_module_ujson);
 #endif
 #if MICROPY_PY_URE
-    { MP_ROM_QSTR(MP_QSTR_ure), MP_ROM_PTR(&mp_module_ure) },
+    MP_REGISTER_MODULE(MP_QSTR_ure, mp_module_ure);
 #endif
 #if MICROPY_PY_UHEAPQ
-    { MP_ROM_QSTR(MP_QSTR_uheapq), MP_ROM_PTR(&mp_module_uheapq) },
+    MP_REGISTER_MODULE(MP_QSTR_uheapq, mp_module_uheapq);
 #endif
 #if MICROPY_PY_UTIMEQ
-    { MP_ROM_QSTR(MP_QSTR_utimeq), MP_ROM_PTR(&mp_module_utimeq) },
+    MP_REGISTER_MODULE(MP_QSTR_utimeq, mp_module_utimeq);
 #endif
 #if MICROPY_PY_UHASHLIB
-    { MP_ROM_QSTR(MP_QSTR_uhashlib), MP_ROM_PTR(&mp_module_uhashlib) },
+    MP_REGISTER_MODULE(MP_QSTR_uhashlib, mp_module_uhashlib);
 #endif
 #if MICROPY_PY_UCRYPTOLIB
-    { MP_ROM_QSTR(MP_QSTR_ucryptolib), MP_ROM_PTR(&mp_module_ucryptolib) },
+    MP_REGISTER_MODULE(MP_QSTR_ucryptolib, mp_module_ucryptolib);
 #endif
 #if MICROPY_PY_UBINASCII
-    { MP_ROM_QSTR(MP_QSTR_ubinascii), MP_ROM_PTR(&mp_module_ubinascii) },
+    MP_REGISTER_MODULE(MP_QSTR_ubinascii, mp_module_ubinascii);
 #endif
 #if MICROPY_PY_URANDOM
-    { MP_ROM_QSTR(MP_QSTR_urandom), MP_ROM_PTR(&mp_module_urandom) },
+    MP_REGISTER_MODULE(MP_QSTR_urandom, mp_module_urandom);
 #endif
 #if MICROPY_PY_USELECT
-    { MP_ROM_QSTR(MP_QSTR_uselect), MP_ROM_PTR(&mp_module_uselect) },
+    MP_REGISTER_MODULE(MP_QSTR_uselect, mp_module_uselect);
 #endif
 #if MICROPY_PY_USSL
-    { MP_ROM_QSTR(MP_QSTR_ussl), MP_ROM_PTR(&mp_module_ussl) },
+    MP_REGISTER_MODULE(MP_QSTR_ussl, mp_module_ussl);
 #endif
 #if MICROPY_PY_LWIP
-    { MP_ROM_QSTR(MP_QSTR_lwip), MP_ROM_PTR(&mp_module_lwip) },
+    MP_REGISTER_MODULE(MP_QSTR_lwip, mp_module_lwip);
 #endif
 #if MICROPY_PY_WEBSOCKET
-    { MP_ROM_QSTR(MP_QSTR_websocket), MP_ROM_PTR(&mp_module_websocket) },
+    MP_REGISTER_MODULE(MP_QSTR_websocket, mp_module_websocket);
 #endif
 #if MICROPY_PY_WEBREPL
-    { MP_ROM_QSTR(MP_QSTR__webrepl), MP_ROM_PTR(&mp_module_webrepl) },
+    MP_REGISTER_MODULE(MP_QSTR__webrepl, mp_module_webrepl);
 #endif
 #if MICROPY_PY_FRAMEBUF
-    { MP_ROM_QSTR(MP_QSTR_framebuf), MP_ROM_PTR(&mp_module_framebuf) },
+    MP_REGISTER_MODULE(MP_QSTR_framebuf, mp_module_framebuf);
 #endif
 #if MICROPY_PY_BTREE
-    { MP_ROM_QSTR(MP_QSTR_btree), MP_ROM_PTR(&mp_module_btree) },
+    MP_REGISTER_MODULE(MP_QSTR_btree, mp_module_btree);
 #endif
 
-    // extra builtin modules as defined by a port
-    MICROPY_PORT_BUILTIN_MODULES
+//     // extra builtin modules as defined by a port
+//     MICROPY_PORT_BUILTIN_MODULES
 
-#ifdef MICROPY_REGISTERED_MODULES
-    // builtin modules declared with MP_REGISTER_MODULE()
-    MICROPY_REGISTERED_MODULES
-#endif
-};
+// #ifdef MICROPY_REGISTERED_MODULES
+//     // builtin modules declared with MP_REGISTER_MODULE()
+//     MICROPY_REGISTERED_MODULES
+// #endif
+// };
 
-MP_DEFINE_CONST_MAP(mp_builtin_module_map, mp_builtin_module_table);
+// MP_DEFINE_CONST_MAP(mp_builtin_module_map, mp_builtin_module_table);
+// const size_t length = &_emoduledefs - &_smoduledefs;
+
+const mp_map_t mp_builtin_module_map = {
+        .all_keys_are_qstrs = 1,
+        .is_fixed = 1,
+        .is_ordered = 1,
+        .used = (((&_emoduledefs) - (&_smoduledefs)) / sizeof(mp_rom_map_elem_t)),
+        .alloc = (((&_emoduledefs) - (&_smoduledefs)) / sizeof(mp_rom_map_elem_t)),
+        .table = (mp_map_elem_t*)(mp_rom_map_elem_t*)mp_builtin_module_table,
+    };
+
 
 #if MICROPY_MODULE_WEAK_LINKS
 STATIC const mp_rom_map_elem_t mp_builtin_module_weak_links_table[] = {

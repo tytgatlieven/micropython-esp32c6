@@ -817,7 +817,11 @@ static inline mp_obj_dict_t *mp_obj_module_get_globals(mp_obj_t module) {
 bool mp_obj_is_package(mp_obj_t module);
 
 // declare a module as a builtin, handled by makemoduledefs.py
-#define MP_REGISTER_MODULE(name, ref, guard)
+#define MP_REGISTER_MODULE(name, ref) \
+    static const __attribute__ ((section (".moduledefs"))) \
+    __attribute__((used)) \
+    mp_rom_map_elem_t __module_def ## name = { MP_ROM_QSTR( name ), MP_ROM_PTR(& ref ) };\
+    UNUSED(__module_def ## name);
 
 // staticmethod and classmethod types; defined here so we can make const versions
 // this structure is used for instances of both staticmethod and classmethod

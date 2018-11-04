@@ -54,6 +54,14 @@ SECTIONS
         _etext = .;        /* define a global symbol at end of code */
     } >FLASH_TEXT
 
+    .moduledefs :
+    {
+        . = ALIGN(4);
+        _smoduledefs = .;
+        *(.moduledefs*)          /* .moduledefs* sections (builtin definitions) */
+        _emoduledefs = .;
+    }
+
     /* used by the startup to initialize data */
     _sidata = LOADADDR(.data);
 
