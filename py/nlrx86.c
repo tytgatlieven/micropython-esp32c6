@@ -27,6 +27,7 @@
 #include "py/mpstate.h"
 
 #if MICROPY_NLR_X86
+#if !defined(_WIN32)
 
 #undef nlr_push
 
@@ -101,4 +102,5 @@ NORETURN void nlr_jump(void *val) {
     MP_UNREACHABLE
 }
 
+#endif // !_WIN32
 #endif // MICROPY_NLR_X86

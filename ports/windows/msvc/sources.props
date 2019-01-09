@@ -24,4 +24,16 @@
     <PyCoreInclude Include="$(PyBaseDir)py\*.h" />
     <PyExtModInclude Include="$(PyBaseDir)extmod\*.h" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <MASM Include="$(PyBaseDir)ports\windows\msvc\asmnlrx64.asm" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <MASM Include="$(PyBaseDir)ports\windows\msvc\asmnlrx64.asm" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <MASM Include="$(PyBaseDir)ports\windows\msvc\asmnlrx86.asm" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <MASM Include="$(PyBaseDir)ports\windows\msvc\asmnlrx86.asm" />
+  </ItemGroup>
 </Project>

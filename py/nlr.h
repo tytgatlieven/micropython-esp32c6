@@ -53,10 +53,10 @@
 #else
 #define MICROPY_NLR_OS_WINDOWS 0
 #endif
-#if defined(__i386__)
+#if defined(__i386__) || (defined(_WIN32) && !defined(_WIN64))
     #define MICROPY_NLR_X86 (1)
     #define MICROPY_NLR_NUM_REGS (MICROPY_NLR_NUM_REGS_X86)
-#elif defined(__x86_64__)
+#elif defined(__x86_64__) || defined(_WIN64)
     #define MICROPY_NLR_X64 (1)
     #if MICROPY_NLR_OS_WINDOWS
         #define MICROPY_NLR_NUM_REGS (MICROPY_NLR_NUM_REGS_X64_WIN)
