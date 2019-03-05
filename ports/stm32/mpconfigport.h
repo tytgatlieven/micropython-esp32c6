@@ -173,6 +173,7 @@
 #ifndef MICROPY_PY_NETWORK
 #define MICROPY_PY_NETWORK          (1)
 #endif
+#define MICROPY_PY_NIMBLE           (1)
 
 // fatfs configuration used in ffconf.h
 #define MICROPY_FATFS_ENABLE_LFN       (1)
@@ -198,6 +199,7 @@
 extern const struct _mp_obj_module_t machine_module;
 extern const struct _mp_obj_module_t pyb_module;
 extern const struct _mp_obj_module_t stm_module;
+extern const struct _mp_obj_module_t nimble_module;
 extern const struct _mp_obj_module_t mp_module_ubinascii;
 extern const struct _mp_obj_module_t mp_module_ure;
 extern const struct _mp_obj_module_t mp_module_uzlib;
@@ -214,6 +216,12 @@ extern const struct _mp_obj_module_t mp_module_onewire;
 #define STM_BUILTIN_MODULE               { MP_ROM_QSTR(MP_QSTR_stm), MP_ROM_PTR(&stm_module) },
 #else
 #define STM_BUILTIN_MODULE
+#endif
+
+#if MICROPY_PY_NIMBLE
+#define NIMBLE_BUILTIN_MODULE { MP_ROM_QSTR(MP_QSTR_nimble), MP_ROM_PTR(&nimble_module) },
+#else
+#define NIMBLE_BUILTIN_MODULE
 #endif
 
 #if MICROPY_PY_USOCKET && MICROPY_PY_LWIP
@@ -246,6 +254,7 @@ extern const struct _mp_obj_module_t mp_module_onewire;
     { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&machine_module) }, \
     { MP_ROM_QSTR(MP_QSTR_pyb), MP_ROM_PTR(&pyb_module) }, \
     STM_BUILTIN_MODULE \
+    NIMBLE_BUILTIN_MODULE \
     { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_uos) }, \
     { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_utime) }, \
     SOCKET_BUILTIN_MODULE \
