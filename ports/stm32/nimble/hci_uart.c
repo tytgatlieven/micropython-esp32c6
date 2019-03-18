@@ -7,13 +7,18 @@
 #include "pin_static_af.h"
 #include "uart.h"
 #include "nimble/ble.h"
+#include "nimble/host/src/ble_hs_id_priv.h"
+#include "nimble/host/include/host/ble_hs_id.h"
 #include "hal/hal_uart.h"
+#include "modmachine.h"
 
 #if MICROPY_PY_NIMBLE
 
-#define NIMBLE_UART_ID 6
-#define NIMBLE_PIN_PWR pyb_pin_BT_REG_ON
-#define NIMBLE_PIN_CTS pyb_pin_BT_CTS
+#define NIMBLE_UART_ID 4
+#define NIMBLE_PIN_PWR MICROPY_HW_BLE_RESET_GPIO
+// #define NIMBLE_PIN_PWR MICROPY_HW_BLE_WAKE_GPIO
+#define NIMBLE_PIN_CTS MICROPY_HW_UART4_CTS
+#define NIMBLE_AF_CTS STATIC_AF_UART4_CTS
 
 /******************************************************************************/
 // UART
@@ -54,58 +59,59 @@ static void bthci_wait_cts_low(void) {
         }
         mp_hal_delay_ms(1);
     }
-    mp_hal_pin_config_alt_static(NIMBLE_PIN_CTS, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, STATIC_AF_USART6_CTS);
+    mp_hal_pin_config_alt_static(NIMBLE_PIN_CTS, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, NIMBLE_AF_CTS);
 }
 
-static int bthci_hci_cmd_raw(size_t len, uint8_t *buf) {
-    uart_tx_strn(hci_uart_obj, (void*)buf, len);
-    for (int i = 0; i < 6; ++i) {
-        while (!uart_rx_any(hci_uart_obj)) {
-            MICROPY_EVENT_POLL_HOOK
-        }
-        buf[i] = uart_rx_char(hci_uart_obj);
-    }
+// static int bthci_hci_cmd_raw(size_t len, uint8_t *buf) {
+//     uart_tx_strn(hci_uart_obj, (void*)buf, len);
+//     for (int i = 0; i < 6; ++i) {
+//         while (!uart_rx_any(hci_uart_obj)) {
+//             MICROPY_EVENT_POLL_HOOK
+//         }
+//         buf[i] = uart_rx_char(hci_uart_obj);
+//     }
 
-    // expect a comand complete event (event 0x0e)
-    if (buf[0] != 0x04 || buf[1] != 0x0e) {
-        printf("unknown response: %02x %02x %02x %02x\n", buf[0], buf[1], buf[2], buf[3]);
-        return -1;
-    }
+//     // expect a comand complete event (event 0x0e)
+//     if (buf[0] != 0x04 || buf[1] != 0x0e) {
+//         printf("unknown response: %02x %02x %02x %02x\n", buf[0], buf[1], buf[2], buf[3]);
+//         return -1;
+//     }
 
-    int sz = buf[2] - 3;
-    for (int i = 0; i < sz; ++i) {
-        while (!uart_rx_any(hci_uart_obj)) {
-            MICROPY_EVENT_POLL_HOOK
-        }
-        buf[i] = uart_rx_char(hci_uart_obj);
-    }
+//     int sz = buf[2] - 3;
+//     for (int i = 0; i < sz; ++i) {
+//         while (!uart_rx_any(hci_uart_obj)) {
+//             MICROPY_EVENT_POLL_HOOK
+//         }
+//         buf[i] = uart_rx_char(hci_uart_obj);
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
-static int bthci_hci_cmd(int ogf, int ocf, size_t param_len, const uint8_t *param_buf) {
-    uint8_t *buf = hci_cmd_buf;
-    buf[0] = 0x01;
-    buf[1] = ocf;
-    buf[2] = ogf << 2 | ocf >> 8;
-    buf[3] = param_len;
-    if (param_len) {
-        memcpy(buf + 4, param_buf, param_len);
-    }
-    return bthci_hci_cmd_raw(4 + param_len, buf);
-}
+// static int bthci_hci_cmd(int ogf, int ocf, size_t param_len, const uint8_t *param_buf) {
+//     uint8_t *buf = hci_cmd_buf;
+//     buf[0] = 0x01;
+//     buf[1] = ocf;
+//     buf[2] = ogf << 2 | ocf >> 8;
+//     buf[3] = param_len;
+//     if (param_len) {
+//         memcpy(buf + 4, param_buf, param_len);
+//     }
+//     return bthci_hci_cmd_raw(4 + param_len, buf);
+// }
 
-static int bthci_set_baudrate(uint32_t baudrate) {
-    uint8_t buf[6];
-    put_le16(buf, 0);
-    put_le32(buf + 2, baudrate);
-    // note: this is a vendor-specific HCI command
-    return bthci_hci_cmd(0x3f, 0x18, 6, buf);
-}
+// static int bthci_set_baudrate(uint32_t baudrate) {
+//     uint8_t buf[6];
+//     put_le16(buf, 0);
+//     put_le32(buf + 2, baudrate);
+//     // note: this is a vendor-specific HCI command
+//     return bthci_hci_cmd(0x3f, 0x18, 6, buf);
+// }
 
 static int bthci_init(void) {
     mp_hal_pin_output(NIMBLE_PIN_PWR);
-    mp_hal_pin_low(NIMBLE_PIN_PWR);
+    // mp_hal_pin_low(NIMBLE_PIN_PWR);
+    mp_hal_pin_high(NIMBLE_PIN_PWR);
 
     return 0;
 }
@@ -113,41 +119,58 @@ static int bthci_init(void) {
 static int bthci_activate(void) {
     uint8_t buf[256];
 
-    mp_hal_pin_low(NIMBLE_PIN_PWR);
+    // mp_hal_pin_low(NIMBLE_PIN_PWR);
     uart_set_baudrate(115200);
     mp_hal_delay_ms(100);
     mp_hal_pin_high(NIMBLE_PIN_PWR);
     bthci_wait_cts_low();
 
-    // reset
-    bthci_hci_cmd(0x03, 0x0003, 0, NULL);
+    ble_addr_t addr;
+    memcpy(addr.val, (byte*)MP_HAL_UNIQUE_ID_ADDRESS, 6);    
+    
+    if (1 /*nrpa*/) {
+        addr.val[5] &= ~0xc0;
+    } else {
+        addr.val[5] |= 0xc0;
+    }
 
+    ble_hs_id_set_rnd(addr.val);
+
+    // reset
+    // printf("Sending reset:");
+    // bthci_hci_cmd(0x03, 0x0003, 0, NULL);
+    // printf("Done\n");
+
+    mp_hal_delay_ms(100);
     // change baudrate
-    bthci_set_baudrate(3000000);
-    uart_set_baudrate(3000000);
+    // bthci_set_baudrate(3000000);
+    // uart_set_baudrate(3000000);
 
     // reset
-    bthci_hci_cmd(0x03, 0x0003, 0, NULL);
+    // bthci_hci_cmd(0x03, 0x0003, 0, NULL);
 
     // set BD_ADDR (sent as little endian)
     // note: this is a vendor-specific HCI command
-    uint8_t bdaddr[6];
-    mp_hal_get_mac(MP_HAL_MAC_BDADDR, bdaddr);
-    buf[0] = bdaddr[5];
-    buf[1] = bdaddr[4];
-    buf[2] = bdaddr[3];
-    buf[3] = bdaddr[2];
-    buf[4] = bdaddr[1];
-    buf[5] = bdaddr[0];
-    bthci_hci_cmd(0x3f, 0x0001, 6, buf);
+    // uint8_t bdaddr[6];
+    // mp_hal_get_mac(MP_HAL_MAC_BDADDR, bdaddr);
+    // buf[0] = bdaddr[5];
+    // buf[1] = bdaddr[4];
+    // buf[2] = bdaddr[3];
+    // buf[3] = bdaddr[2];
+    // buf[4] = bdaddr[1];
+    // buf[5] = bdaddr[0];
+    // bthci_hci_cmd(0x3f, 0x0001, 6, buf);
 
     // set local name
+    printf("Setting Name: ");
+
     memset(buf, 0, 248);
-    memcpy(buf, "PYB-BLE", 8);
-    bthci_hci_cmd(0x03, 0x0013, 248, buf);
+    // memcpy(buf, "PYB-BLE", 8);
+    // bthci_hci_cmd(0x03, 0x0013, 248, buf);
+    // printf("Done\n");
 
     // HCI_Write_LE_Host_Support
-    bthci_hci_cmd(3, 109, 2, (const uint8_t*)"\x01\x00");
+    // bthci_hci_cmd(3, 109, 2, (const uint8_t*)"\x01\x00");
 
     return 0;
 }

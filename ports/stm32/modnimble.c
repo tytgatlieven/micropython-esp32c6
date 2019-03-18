@@ -126,7 +126,7 @@ MP_DEFINE_CONST_FUN_OBJ_0(nimble_init_obj, nimble_init);
 
 STATIC mp_obj_t nimble_deinit(void) {
     run_loop_up = false;
-    mp_hal_pin_low(pyb_pin_BT_REG_ON);
+    // mp_hal_pin_low(MICROPY_HW_BLE_RESET_GPIO);
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_0(nimble_deinit_obj, nimble_deinit);
