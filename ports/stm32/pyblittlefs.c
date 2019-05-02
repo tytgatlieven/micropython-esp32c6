@@ -48,7 +48,7 @@
 
 // This is the starting block within SPIFLASH to start the filesystem
 #ifdef MICROPY_VFS_LITTLEFS_START_OFFSET_BYTES
-#define START_BLOCK (MICROPY_VFS_LITTLEFS_START_OFFSET / MP_SPIFLASH_ERASE_BLOCK_SIZE)
+#define START_BLOCK (MICROPY_VFS_LITTLEFS_START_OFFSET_BYTES / MP_SPIFLASH_ERASE_BLOCK_SIZE)
 #else
 #define START_BLOCK 0
 #endif
@@ -69,6 +69,8 @@ STATIC int dev_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off
     return 0;
 }
 
+STATIC uint8_t verify_buff[MP_SPIFLASH_ERASE_BLOCK_SIZE];
+
 STATIC int dev_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, const void *buffer, lfs_size_t size) {
     mp_spiflash_t *spiflash = c->context;
 
@@ -77,6 +79,13 @@ STATIC int dev_prog(const struct lfs_config *c, lfs_block_t block, lfs_off_t off
     // we must disable USB irqs to prevent MSC contention with SPI flash
     uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
     mp_spiflash_write(spiflash, block * MP_SPIFLASH_ERASE_BLOCK_SIZE + off, size, buffer);
+    
+    
+    mp_spiflash_read(spiflash, block * MP_SPIFLASH_ERASE_BLOCK_SIZE + off, size, verify_buff);
+    if (memcmp(verify_buff, buffer, size) != 0) {
+        __asm__("BKPT");
+        while(1)  ;
+    }
     restore_irq_pri(basepri);
 
     return 0;
@@ -102,6 +111,10 @@ STATIC int dev_sync(const struct lfs_config *c) {
     return 0;
 }
 
+#if (LFS_VERSION >= 0x00020000)
+static uint8_t __attribute__ ((aligned (64))) lookahead_buffer[128/8];
+#endif
+
 STATIC void init_config(struct lfs_config *config) {
     config->context = SPIFLASH;
 
@@ -114,12 +127,24 @@ STATIC void init_config(struct lfs_config *config) {
     config->prog_size = 128;
     config->block_size = MP_SPIFLASH_ERASE_BLOCK_SIZE;
     config->block_count = NUM_BLOCKS;
-    config->lookahead = 128;
-
     config->read_buffer = m_new(uint8_t, config->read_size);
     config->prog_buffer = m_new(uint8_t, config->prog_size);
+#if (LFS_VERSION >= 0x00020000)
+    config->block_cycles = 100;
+    config->cache_size = 128;
+    config->lookahead_size = 128;
+    config->lookahead_buffer = lookahead_buffer;
+
+#else
+    config->lookahead = 128;
     config->lookahead_buffer = m_new(uint8_t, config->lookahead / 8);
-    config->file_buffer = m_new(uint8_t, config->prog_size);
+#endif
+    // if ((uint32_t)config->lookahead_buffer % 64) {
+    //     __asm__("BKPT");
+    //     static uint8_t __attribute__ ((aligned (64))) lookahead_buffer[128/8];
+    //     config->lookahead_buffer = lookahead_buffer;
+    // }
+    // config->file_buffer = m_new(uint8_t, config->prog_size);
 }
 
 int pyb_littlefs_mount(const char * mount) {
