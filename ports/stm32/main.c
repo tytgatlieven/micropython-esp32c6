@@ -150,7 +150,6 @@ MP_DEFINE_CONST_FUN_OBJ_KW(pyb_main_obj, 1, pyb_main);
 
 #if MICROPY_HW_ENABLE_STORAGE
 // avoid inlining to avoid stack usage within main()
-#if MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE
 MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
     // init the vfs object
     fs_user_mount_t *vfs_fat = &fs_user_mount_flash;
@@ -211,7 +210,6 @@ MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
 
     return true;
 }
-#endif
 #endif
 
 #if MICROPY_HW_SDCARD_MOUNT_AT_BOOT
@@ -569,20 +567,28 @@ soft_reset:
     // Initialise the local flash filesystem.
     // Create it if needed, mount in on /flash, and set it as current dir.
     bool mounted_flash = false;
-    extern int pyb_littlefs_mount(const char * mount);
+    // extern int pyb_littlefs_mount(const char * mount);
 
+    // #if MICROPY_HW_ENABLE_STORAGE
+    //     #if MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE || !MICROPY_HW_ENABLE_NATIVE_LFS
+    //         mounted_flash = init_flash_fs(reset_mode);
+    //         #if MICROPY_HW_ENABLE_NATIVE_LFS
+    //             pyb_littlefs_mount(NULL);
+    //         #endif
+    //     #else
+    //         #if MICROPY_HW_ENABLE_NATIVE_LFS
+    //             mounted_flash = (pyb_littlefs_mount("/flash") == 0);
+    //         #endif
+    //     #endif
+    // #endif
     #if MICROPY_HW_ENABLE_STORAGE
-        #if MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE || !MICROPY_HW_ENABLE_NATIVE_LFS
-            mounted_flash = init_flash_fs(reset_mode);
-            #if MICROPY_HW_ENABLE_NATIVE_LFS
-                pyb_littlefs_mount(NULL);
-            #endif
-        #else
-            #if MICROPY_HW_ENABLE_NATIVE_LFS
-                mounted_flash = (pyb_littlefs_mount("/flash") == 0);
-            #endif
-        #endif
+    mounted_flash = init_flash_fs(reset_mode);
     #endif
+
+    #if MICROPY_HW_ENABLE_NATIVE_LFS
+    extern int pyb_littlefs_mount(const char * mount);
+    pyb_littlefs_mount("/lfs");
+    #endif    
 
     bool mounted_sdcard = false;
     #if MICROPY_HW_SDCARD_MOUNT_AT_BOOT
