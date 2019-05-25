@@ -27,22 +27,22 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 
-#if MICROPY_PY_UBLUEPY_PERIPHERAL || MICROPY_PY_UBLUEPY_CENTRAL
+#if MICROPY_PY_BLE_PERIPHERAL || MICROPY_PY_BLE_CENTRAL
 
-#include "modubluepy.h"
+#include "modble.h"
 #include "ble_drv.h"
 
-STATIC void ubluepy_characteristic_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
-    ubluepy_characteristic_obj_t * self = (ubluepy_characteristic_obj_t *)o;
+STATIC void ble_characteristic_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
+    ble_characteristic_obj_t * self = (ble_characteristic_obj_t *)o;
 
     mp_printf(print, "Characteristic(handle: 0x" HEX2_FMT ", conn_handle: " HEX2_FMT ")",
               self->handle, self->p_service->p_periph->conn_handle);
 }
 
-STATIC mp_obj_t ubluepy_characteristic_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+STATIC mp_obj_t ble_characteristic_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_uuid,  MP_ARG_REQUIRED| MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_props, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = UBLUEPY_PROP_READ | UBLUEPY_PROP_WRITE} },
+        { MP_QSTR_props, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = BLE_PROP_READ | BLE_PROP_WRITE} },
         { MP_QSTR_attrs, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
     };
 
@@ -50,7 +50,7 @@ STATIC mp_obj_t ubluepy_characteristic_make_new(const mp_obj_type_t *type, size_
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    ubluepy_characteristic_obj_t *s = m_new_obj(ubluepy_characteristic_obj_t);
+    ble_characteristic_obj_t *s = m_new_obj(ble_characteristic_obj_t);
     s->base.type = type;
 
     mp_obj_t uuid_obj = args[0].u_obj;
@@ -59,7 +59,7 @@ STATIC mp_obj_t ubluepy_characteristic_make_new(const mp_obj_type_t *type, size_
         return MP_OBJ_FROM_PTR(s);
     }
 
-    if (mp_obj_is_type(uuid_obj, &ubluepy_uuid_type)) {
+    if (mp_obj_is_type(uuid_obj, &ble_uuid_type)) {
         s->p_uuid = MP_OBJ_TO_PTR(uuid_obj);
         // (void)sd_characterstic_add(s);
     } else {
@@ -84,7 +84,7 @@ STATIC mp_obj_t ubluepy_characteristic_make_new(const mp_obj_type_t *type, size_
 }
 
 void char_data_callback(mp_obj_t self_in, uint16_t length, uint8_t * p_data) {
-    ubluepy_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
+    ble_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
     self->value_data = mp_obj_new_bytearray(length, p_data);
 }
 
@@ -92,9 +92,9 @@ void char_data_callback(mp_obj_t self_in, uint16_t length, uint8_t * p_data) {
 /// Read Characteristic value.
 ///
 STATIC mp_obj_t char_read(mp_obj_t self_in) {
-    ubluepy_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
+    ble_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
 
-#if MICROPY_PY_UBLUEPY_CENTRAL
+#if MICROPY_PY_BLE_CENTRAL
     // TODO: free any previous allocation of value_data
 
     ble_drv_attr_c_read(self->p_service->p_periph->conn_handle,
@@ -108,13 +108,13 @@ STATIC mp_obj_t char_read(mp_obj_t self_in) {
     return mp_const_none;
 #endif
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(ubluepy_characteristic_read_obj, char_read);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_characteristic_read_obj, char_read);
 
 /// \method write(data, [with_response=False])
 /// Write Characteristic value.
 ///
 STATIC mp_obj_t char_write(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    ubluepy_characteristic_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
+    ble_characteristic_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     mp_obj_t data                      = pos_args[1];
 
     static const mp_arg_t allowed_args[] = {
@@ -129,10 +129,10 @@ STATIC mp_obj_t char_write(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     mp_get_buffer_raise(data, &bufinfo, MP_BUFFER_READ);
 
     // figure out mode of the Peripheral
-    ubluepy_role_type_t role = self->p_service->p_periph->role;
+    ble_role_type_t role = self->p_service->p_periph->role;
 
-    if (role == UBLUEPY_ROLE_PERIPHERAL) {
-        if (self->props & UBLUEPY_PROP_NOTIFY) {
+    if (role == BLE_ROLE_PERIPHERAL) {
+        if (self->props & BLE_PROP_NOTIFY) {
             ble_drv_attr_s_notify(self->p_service->p_periph->conn_handle,
                                   self->handle,
                                   bufinfo.len,
@@ -144,7 +144,7 @@ STATIC mp_obj_t char_write(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                                  bufinfo.buf);
         }
     } else {
-#if MICROPY_PY_UBLUEPY_CENTRAL
+#if MICROPY_PY_BLE_CENTRAL
         bool with_response = args[0].u_bool;
 
         ble_drv_attr_c_write(self->p_service->p_periph->conn_handle,
@@ -156,66 +156,66 @@ STATIC mp_obj_t char_write(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(ubluepy_characteristic_write_obj, 2, char_write);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(ble_characteristic_write_obj, 2, char_write);
 
 /// \method properties()
 /// Read Characteristic value properties.
 ///
 STATIC mp_obj_t char_properties(mp_obj_t self_in) {
-    ubluepy_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
+    ble_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
     return MP_OBJ_NEW_SMALL_INT(self->props);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(ubluepy_characteristic_get_properties_obj, char_properties);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_characteristic_get_properties_obj, char_properties);
 
 /// \method uuid()
 /// Get UUID instance of the characteristic.
 ///
 STATIC mp_obj_t char_uuid(mp_obj_t self_in) {
-    ubluepy_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
+    ble_characteristic_obj_t * self = MP_OBJ_TO_PTR(self_in);
     return MP_OBJ_FROM_PTR(self->p_uuid);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(ubluepy_characteristic_get_uuid_obj, char_uuid);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_characteristic_get_uuid_obj, char_uuid);
 
 
-STATIC const mp_rom_map_elem_t ubluepy_characteristic_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_read),                MP_ROM_PTR(&ubluepy_characteristic_read_obj) },
-    { MP_ROM_QSTR(MP_QSTR_write),               MP_ROM_PTR(&ubluepy_characteristic_write_obj) },
+STATIC const mp_rom_map_elem_t ble_characteristic_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_read),                MP_ROM_PTR(&ble_characteristic_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write),               MP_ROM_PTR(&ble_characteristic_write_obj) },
 #if 0
-    { MP_ROM_QSTR(MP_QSTR_supportsRead),        MP_ROM_PTR(&ubluepy_characteristic_supports_read_obj) },
-    { MP_ROM_QSTR(MP_QSTR_propertiesToString),  MP_ROM_PTR(&ubluepy_characteristic_properties_to_str_obj) },
-    { MP_ROM_QSTR(MP_QSTR_getHandle),           MP_ROM_PTR(&ubluepy_characteristic_get_handle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_supportsRead),        MP_ROM_PTR(&ble_characteristic_supports_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_propertiesToString),  MP_ROM_PTR(&ble_characteristic_properties_to_str_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getHandle),           MP_ROM_PTR(&ble_characteristic_get_handle_obj) },
 
     // Properties
-    { MP_ROM_QSTR(MP_QSTR_peripheral),          MP_ROM_PTR(&ubluepy_characteristic_get_peripheral_obj) },
+    { MP_ROM_QSTR(MP_QSTR_peripheral),          MP_ROM_PTR(&ble_characteristic_get_peripheral_obj) },
 #endif
-    { MP_ROM_QSTR(MP_QSTR_uuid),                MP_ROM_PTR(&ubluepy_characteristic_get_uuid_obj) },
-    { MP_ROM_QSTR(MP_QSTR_properties),          MP_ROM_PTR(&ubluepy_characteristic_get_properties_obj) },
+    { MP_ROM_QSTR(MP_QSTR_uuid),                MP_ROM_PTR(&ble_characteristic_get_uuid_obj) },
+    { MP_ROM_QSTR(MP_QSTR_properties),          MP_ROM_PTR(&ble_characteristic_get_properties_obj) },
 
-    { MP_ROM_QSTR(MP_QSTR_PROP_BROADCAST),      MP_ROM_INT(UBLUEPY_PROP_BROADCAST) },
-    { MP_ROM_QSTR(MP_QSTR_PROP_READ),           MP_ROM_INT(UBLUEPY_PROP_READ) },
-    { MP_ROM_QSTR(MP_QSTR_PROP_WRITE_WO_RESP),  MP_ROM_INT(UBLUEPY_PROP_WRITE_WO_RESP) },
-    { MP_ROM_QSTR(MP_QSTR_PROP_WRITE),          MP_ROM_INT(UBLUEPY_PROP_WRITE) },
-    { MP_ROM_QSTR(MP_QSTR_PROP_NOTIFY),         MP_ROM_INT(UBLUEPY_PROP_NOTIFY) },
-    { MP_ROM_QSTR(MP_QSTR_PROP_INDICATE),       MP_ROM_INT(UBLUEPY_PROP_INDICATE) },
-    { MP_ROM_QSTR(MP_QSTR_PROP_AUTH_SIGNED_WR), MP_ROM_INT(UBLUEPY_PROP_AUTH_SIGNED_WR) },
+    { MP_ROM_QSTR(MP_QSTR_PROP_BROADCAST),      MP_ROM_INT(BLE_PROP_BROADCAST) },
+    { MP_ROM_QSTR(MP_QSTR_PROP_READ),           MP_ROM_INT(BLE_PROP_READ) },
+    { MP_ROM_QSTR(MP_QSTR_PROP_WRITE_WO_RESP),  MP_ROM_INT(BLE_PROP_WRITE_WO_RESP) },
+    { MP_ROM_QSTR(MP_QSTR_PROP_WRITE),          MP_ROM_INT(BLE_PROP_WRITE) },
+    { MP_ROM_QSTR(MP_QSTR_PROP_NOTIFY),         MP_ROM_INT(BLE_PROP_NOTIFY) },
+    { MP_ROM_QSTR(MP_QSTR_PROP_INDICATE),       MP_ROM_INT(BLE_PROP_INDICATE) },
+    { MP_ROM_QSTR(MP_QSTR_PROP_AUTH_SIGNED_WR), MP_ROM_INT(BLE_PROP_AUTH_SIGNED_WR) },
 
-#if MICROPY_PY_UBLUEPY_PERIPHERAL
-    { MP_ROM_QSTR(MP_QSTR_ATTR_CCCD),           MP_ROM_INT(UBLUEPY_ATTR_CCCD) },
+#if MICROPY_PY_BLE_PERIPHERAL
+    { MP_ROM_QSTR(MP_QSTR_ATTR_CCCD),           MP_ROM_INT(BLE_ATTR_CCCD) },
 #endif
 
-#if MICROPY_PY_UBLUEPY_CENTRAL
-    { MP_ROM_QSTR(MP_QSTR_PROP_AUTH_SIGNED_WR), MP_ROM_INT(UBLUEPY_ATTR_SCCD) },
+#if MICROPY_PY_BLE_CENTRAL
+    { MP_ROM_QSTR(MP_QSTR_PROP_AUTH_SIGNED_WR), MP_ROM_INT(BLE_ATTR_SCCD) },
 #endif
 };
 
-STATIC MP_DEFINE_CONST_DICT(ubluepy_characteristic_locals_dict, ubluepy_characteristic_locals_dict_table);
+STATIC MP_DEFINE_CONST_DICT(ble_characteristic_locals_dict, ble_characteristic_locals_dict_table);
 
-const mp_obj_type_t ubluepy_characteristic_type = {
+const mp_obj_type_t ble_characteristic_type = {
     { &mp_type_type },
     .name = MP_QSTR_Characteristic,
-    .print = ubluepy_characteristic_print,
-    .make_new = ubluepy_characteristic_make_new,
-    .locals_dict = (mp_obj_dict_t*)&ubluepy_characteristic_locals_dict
+    .print = ble_characteristic_print,
+    .make_new = ble_characteristic_make_new,
+    .locals_dict = (mp_obj_dict_t*)&ble_characteristic_locals_dict
 };
 
-#endif // MICROPY_PY_UBLUEPY_PERIPHERAL || MICROPY_PY_UBLUEPY_CENTRAL
+#endif // MICROPY_PY_BLE_PERIPHERAL || MICROPY_PY_BLE_CENTRAL

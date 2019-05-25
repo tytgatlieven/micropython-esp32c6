@@ -27,11 +27,11 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 
-#if MICROPY_PY_UBLUEPY
+#if MICROPY_PY_BLE
 
-#include "modubluepy.h"
+#include "modble.h"
 
-STATIC const mp_rom_map_elem_t ubluepy_constants_ad_types_locals_dict_table[] = {
+STATIC const mp_rom_map_elem_t ble_constants_ad_types_locals_dict_table[] = {
     // GAP AD Types
     { MP_ROM_QSTR(MP_QSTR_AD_TYPE_FLAGS),                              MP_ROM_INT(0x01) },
     { MP_ROM_QSTR(MP_QSTR_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE),  MP_ROM_INT(0x02) },
@@ -67,33 +67,33 @@ STATIC const mp_rom_map_elem_t ubluepy_constants_ad_types_locals_dict_table[] = 
     { MP_ROM_QSTR(MP_QSTR_AD_TYPE_MANUFACTURER_SPECIFIC_DATA),         MP_ROM_INT(0xFF) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(ubluepy_constants_ad_types_locals_dict, ubluepy_constants_ad_types_locals_dict_table);
+STATIC MP_DEFINE_CONST_DICT(ble_constants_ad_types_locals_dict, ble_constants_ad_types_locals_dict_table);
 
-const mp_obj_type_t ubluepy_constants_ad_types_type = {
+const mp_obj_type_t ble_constants_ad_types_type = {
     { &mp_type_type },
     .name = MP_QSTR_ad_types,
-    .locals_dict = (mp_obj_dict_t*)&ubluepy_constants_ad_types_locals_dict
+    .locals_dict = (mp_obj_dict_t*)&ble_constants_ad_types_locals_dict
 };
 
-STATIC const mp_rom_map_elem_t ubluepy_constants_locals_dict_table[] = {
+STATIC const mp_rom_map_elem_t ble_constants_locals_dict_table[] = {
     // GAP events
     { MP_ROM_QSTR(MP_QSTR_EVT_GAP_CONNECTED),       MP_ROM_INT(16) },
     { MP_ROM_QSTR(MP_QSTR_EVT_GAP_DISCONNECTED),    MP_ROM_INT(17) },
     { MP_ROM_QSTR(MP_QSTR_EVT_GATTS_WRITE),         MP_ROM_INT(80) },
     { MP_ROM_QSTR(MP_QSTR_UUID_CCCD),               MP_ROM_INT(0x2902) },
 
-    { MP_ROM_QSTR(MP_QSTR_ADDR_TYPE_PUBLIC),        MP_ROM_INT(UBLUEPY_ADDR_TYPE_PUBLIC) },
-    { MP_ROM_QSTR(MP_QSTR_ADDR_TYPE_RANDOM_STATIC), MP_ROM_INT(UBLUEPY_ADDR_TYPE_RANDOM_STATIC) },
+    { MP_ROM_QSTR(MP_QSTR_ADDR_TYPE_PUBLIC),        MP_ROM_INT(BLE_ADDR_TYPE_PUBLIC) },
+    { MP_ROM_QSTR(MP_QSTR_ADDR_TYPE_RANDOM_STATIC), MP_ROM_INT(BLE_ADDR_TYPE_RANDOM_STATIC) },
 
-    { MP_ROM_QSTR(MP_QSTR_ad_types),                MP_ROM_PTR(&ubluepy_constants_ad_types_type) },
+    { MP_ROM_QSTR(MP_QSTR_ad_types),                MP_ROM_PTR(&ble_constants_ad_types_type) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(ubluepy_constants_locals_dict, ubluepy_constants_locals_dict_table);
+STATIC MP_DEFINE_CONST_DICT(ble_constants_locals_dict, ble_constants_locals_dict_table);
 
-const mp_obj_type_t ubluepy_constants_type = {
+const mp_obj_type_t ble_constants_type = {
     { &mp_type_type },
     .name = MP_QSTR_constants,
-    .locals_dict = (mp_obj_dict_t*)&ubluepy_constants_locals_dict
+    .locals_dict = (mp_obj_dict_t*)&ble_constants_locals_dict
 };
 
-#endif // MICROPY_PY_UBLUEPY
+#endif // MICROPY_PY_BLE

@@ -30,16 +30,16 @@
 #include "py/objstr.h"
 #include "py/objlist.h"
 
-#if MICROPY_PY_UBLUEPY_CENTRAL
+#if MICROPY_PY_BLE_CENTRAL
 
 #include "ble_drv.h"
 #include "mphalport.h"
 
 STATIC void adv_event_handler(mp_obj_t self_in, uint16_t event_id, ble_drv_adv_data_t * data) {
-    ubluepy_scanner_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ble_scanner_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
-    ubluepy_scan_entry_obj_t * item = m_new_obj(ubluepy_scan_entry_obj_t);
-    item->base.type = &ubluepy_scan_entry_type;
+    ble_scan_entry_obj_t * item = m_new_obj(ble_scan_entry_obj_t);
+    item->base.type = &ble_scan_entry_type;
 
     vstr_t vstr;
     vstr_init(&vstr, 17);
@@ -63,13 +63,13 @@ STATIC void adv_event_handler(mp_obj_t self_in, uint16_t event_id, ble_drv_adv_d
     ble_drv_scan_start(true);
 }
 
-STATIC void ubluepy_scanner_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
-    ubluepy_scanner_obj_t * self = (ubluepy_scanner_obj_t *)o;
+STATIC void ble_scanner_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
+    ble_scanner_obj_t * self = (ble_scanner_obj_t *)o;
     (void)self;
     mp_printf(print, "Scanner");
 }
 
-STATIC mp_obj_t ubluepy_scanner_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+STATIC mp_obj_t ble_scanner_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     static const mp_arg_t allowed_args[] = {
 
     };
@@ -78,7 +78,7 @@ STATIC mp_obj_t ubluepy_scanner_make_new(const mp_obj_type_t *type, size_t n_arg
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    ubluepy_scanner_obj_t * s = m_new_obj(ubluepy_scanner_obj_t);
+    ble_scanner_obj_t * s = m_new_obj(ble_scanner_obj_t);
     s->base.type = type;
 
     return MP_OBJ_FROM_PTR(s);
@@ -89,7 +89,7 @@ STATIC mp_obj_t ubluepy_scanner_make_new(const mp_obj_type_t *type, size_t n_arg
 /// of the scanning.
 ///
 STATIC mp_obj_t scanner_scan(mp_obj_t self_in, mp_obj_t timeout_in) {
-    ubluepy_scanner_obj_t * self = MP_OBJ_TO_PTR(self_in);
+    ble_scanner_obj_t * self = MP_OBJ_TO_PTR(self_in);
     mp_int_t timeout = mp_obj_get_int(timeout_in);
 
     self->adv_reports = mp_obj_new_list(0, NULL);
@@ -107,21 +107,21 @@ STATIC mp_obj_t scanner_scan(mp_obj_t self_in, mp_obj_t timeout_in) {
 
     return self->adv_reports;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(ubluepy_scanner_scan_obj, scanner_scan);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(ble_scanner_scan_obj, scanner_scan);
 
-STATIC const mp_rom_map_elem_t ubluepy_scanner_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_scan), MP_ROM_PTR(&ubluepy_scanner_scan_obj) },
+STATIC const mp_rom_map_elem_t ble_scanner_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_scan), MP_ROM_PTR(&ble_scanner_scan_obj) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(ubluepy_scanner_locals_dict, ubluepy_scanner_locals_dict_table);
+STATIC MP_DEFINE_CONST_DICT(ble_scanner_locals_dict, ble_scanner_locals_dict_table);
 
 
-const mp_obj_type_t ubluepy_scanner_type = {
+const mp_obj_type_t ble_scanner_type = {
     { &mp_type_type },
     .name = MP_QSTR_Scanner,
-    .print = ubluepy_scanner_print,
-    .make_new = ubluepy_scanner_make_new,
-    .locals_dict = (mp_obj_dict_t*)&ubluepy_scanner_locals_dict
+    .print = ble_scanner_print,
+    .make_new = ble_scanner_make_new,
+    .locals_dict = (mp_obj_dict_t*)&ble_scanner_locals_dict
 };
 
-#endif // MICROPY_PY_UBLUEPY_CENTRAL
+#endif // MICROPY_PY_BLE_CENTRAL

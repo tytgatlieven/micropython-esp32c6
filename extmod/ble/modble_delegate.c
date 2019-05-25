@@ -27,18 +27,18 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 
-#if MICROPY_PY_UBLUEPY_PERIPHERAL || MICROPY_PY_UBLUEPY_CENTRAL
+#if MICROPY_PY_BLE_PERIPHERAL || MICROPY_PY_BLE_CENTRAL
 
-#include "modubluepy.h"
+#include "modble.h"
 
-STATIC void ubluepy_delegate_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
-    ubluepy_delegate_obj_t * self = (ubluepy_delegate_obj_t *)o;
+STATIC void ble_delegate_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
+    ble_delegate_obj_t * self = (ble_delegate_obj_t *)o;
     (void)self;
     mp_printf(print, "DefaultDelegate()");
 }
 
-STATIC mp_obj_t ubluepy_delegate_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    ubluepy_delegate_obj_t *s = m_new_obj(ubluepy_delegate_obj_t);
+STATIC mp_obj_t ble_delegate_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+    ble_delegate_obj_t *s = m_new_obj(ble_delegate_obj_t);
     s->base.type = type;
 
     return MP_OBJ_FROM_PTR(s);
@@ -48,42 +48,42 @@ STATIC mp_obj_t ubluepy_delegate_make_new(const mp_obj_type_t *type, size_t n_ar
 /// Handle connection events.
 ///
 STATIC mp_obj_t delegate_handle_conn(mp_obj_t self_in) {
-    ubluepy_delegate_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ble_delegate_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     (void)self;
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(ubluepy_delegate_handle_conn_obj, delegate_handle_conn);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_delegate_handle_conn_obj, delegate_handle_conn);
 
 /// \method handleNotification()
 /// Handle notification events.
 ///
 STATIC mp_obj_t delegate_handle_notif(mp_obj_t self_in) {
-    ubluepy_delegate_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ble_delegate_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
     (void)self;
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(ubluepy_delegate_handle_notif_obj, delegate_handle_notif);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_delegate_handle_notif_obj, delegate_handle_notif);
 
-STATIC const mp_rom_map_elem_t ubluepy_delegate_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_handleConnection),   MP_ROM_PTR(&ubluepy_delegate_handle_conn_obj) },
-    { MP_ROM_QSTR(MP_QSTR_handleNotification), MP_ROM_PTR(&ubluepy_delegate_handle_notif_obj) },
+STATIC const mp_rom_map_elem_t ble_delegate_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_handleConnection),   MP_ROM_PTR(&ble_delegate_handle_conn_obj) },
+    { MP_ROM_QSTR(MP_QSTR_handleNotification), MP_ROM_PTR(&ble_delegate_handle_notif_obj) },
 #if 0
-	{ MP_ROM_QSTR(MP_QSTR_handleDiscovery),    MP_ROM_PTR(&ubluepy_delegate_handle_disc_obj) },
+	{ MP_ROM_QSTR(MP_QSTR_handleDiscovery),    MP_ROM_PTR(&ble_delegate_handle_disc_obj) },
 #endif
 };
 
-STATIC MP_DEFINE_CONST_DICT(ubluepy_delegate_locals_dict, ubluepy_delegate_locals_dict_table);
+STATIC MP_DEFINE_CONST_DICT(ble_delegate_locals_dict, ble_delegate_locals_dict_table);
 
-const mp_obj_type_t ubluepy_delegate_type = {
+const mp_obj_type_t ble_delegate_type = {
     { &mp_type_type },
     .name = MP_QSTR_DefaultDelegate,
-    .print = ubluepy_delegate_print,
-    .make_new = ubluepy_delegate_make_new,
-    .locals_dict = (mp_obj_dict_t*)&ubluepy_delegate_locals_dict
+    .print = ble_delegate_print,
+    .make_new = ble_delegate_make_new,
+    .locals_dict = (mp_obj_dict_t*)&ble_delegate_locals_dict
 };
 
-#endif // MICROPY_PY_UBLUEPY_PERIPHERAL || MICROPY_PY_UBLUEPY_CENTRAL
+#endif // MICROPY_PY_BLE_PERIPHERAL || MICROPY_PY_BLE_CENTRAL

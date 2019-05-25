@@ -33,12 +33,12 @@
 #include "py/objtuple.h"
 #include "py/qstr.h"
 
-#if MICROPY_PY_UBLUEPY_CENTRAL
+#if MICROPY_PY_BLE_CENTRAL
 
 #include "ble_drv.h"
 
-STATIC void ubluepy_scan_entry_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
-    ubluepy_scan_entry_obj_t * self = (ubluepy_scan_entry_obj_t *)o;
+STATIC void ble_scan_entry_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
+    ble_scan_entry_obj_t * self = (ble_scan_entry_obj_t *)o;
     (void)self;
     mp_printf(print, "ScanEntry");
 }
@@ -47,7 +47,7 @@ STATIC void ubluepy_scan_entry_print(const mp_print_t *print, mp_obj_t o, mp_pri
 /// Return address as text string.
 ///
 STATIC mp_obj_t scan_entry_get_addr(mp_obj_t self_in) {
-    ubluepy_scan_entry_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ble_scan_entry_obj_t *self = MP_OBJ_TO_PTR(self_in);
     return self->addr;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bluepy_scan_entry_get_addr_obj, scan_entry_get_addr);
@@ -56,7 +56,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(bluepy_scan_entry_get_addr_obj, scan_entry_get_
 /// Return address type value.
 ///
 STATIC mp_obj_t scan_entry_get_addr_type(mp_obj_t self_in) {
-    ubluepy_scan_entry_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ble_scan_entry_obj_t *self = MP_OBJ_TO_PTR(self_in);
     return mp_obj_new_int(self->addr_type);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bluepy_scan_entry_get_addr_type_obj, scan_entry_get_addr_type);
@@ -65,7 +65,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(bluepy_scan_entry_get_addr_type_obj, scan_entry
 /// Return RSSI value.
 ///
 STATIC mp_obj_t scan_entry_get_rssi(mp_obj_t self_in) {
-    ubluepy_scan_entry_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    ble_scan_entry_obj_t *self = MP_OBJ_TO_PTR(self_in);
     return mp_obj_new_int(self->rssi);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bluepy_scan_entry_get_rssi_obj, scan_entry_get_rssi);
@@ -74,7 +74,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(bluepy_scan_entry_get_rssi_obj, scan_entry_get_
 /// Return list of the scan data tupples (ad_type, description, value)
 ///
 STATIC mp_obj_t scan_entry_get_scan_data(mp_obj_t self_in) {
-    ubluepy_scan_entry_obj_t * self = MP_OBJ_TO_PTR(self_in);
+    ble_scan_entry_obj_t * self = MP_OBJ_TO_PTR(self_in);
 
     mp_obj_t retval_list = mp_obj_new_list(0, NULL);
 
@@ -91,7 +91,7 @@ STATIC mp_obj_t scan_entry_get_scan_data(mp_obj_t self_in) {
 
         mp_obj_t description = mp_const_none;
 
-        mp_map_t *constant_map = mp_obj_dict_get_map(ubluepy_constants_ad_types_type.locals_dict);
+        mp_map_t *constant_map = mp_obj_dict_get_map(ble_constants_ad_types_type.locals_dict);
         mp_map_elem_t *ad_types_table = MP_OBJ_TO_PTR(constant_map->table);
 
         uint16_t num_of_elements = constant_map->used;
@@ -125,22 +125,22 @@ STATIC mp_obj_t scan_entry_get_scan_data(mp_obj_t self_in) {
 
     return retval_list;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(ubluepy_scan_entry_get_scan_data_obj, scan_entry_get_scan_data);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_scan_entry_get_scan_data_obj, scan_entry_get_scan_data);
 
-STATIC const mp_rom_map_elem_t ubluepy_scan_entry_locals_dict_table[] = {
+STATIC const mp_rom_map_elem_t ble_scan_entry_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_addr),        MP_ROM_PTR(&bluepy_scan_entry_get_addr_obj) },
     { MP_ROM_QSTR(MP_QSTR_addr_type),   MP_ROM_PTR(&bluepy_scan_entry_get_addr_type_obj) },
     { MP_ROM_QSTR(MP_QSTR_rssi),        MP_ROM_PTR(&bluepy_scan_entry_get_rssi_obj) },
-    { MP_ROM_QSTR(MP_QSTR_getScanData), MP_ROM_PTR(&ubluepy_scan_entry_get_scan_data_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getScanData), MP_ROM_PTR(&ble_scan_entry_get_scan_data_obj) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(ubluepy_scan_entry_locals_dict, ubluepy_scan_entry_locals_dict_table);
+STATIC MP_DEFINE_CONST_DICT(ble_scan_entry_locals_dict, ble_scan_entry_locals_dict_table);
 
-const mp_obj_type_t ubluepy_scan_entry_type = {
+const mp_obj_type_t ble_scan_entry_type = {
     { &mp_type_type },
     .name = MP_QSTR_ScanEntry,
-    .print = ubluepy_scan_entry_print,
-    .locals_dict = (mp_obj_dict_t*)&ubluepy_scan_entry_locals_dict
+    .print = ble_scan_entry_print,
+    .locals_dict = (mp_obj_dict_t*)&ble_scan_entry_locals_dict
 };
 
-#endif // MICROPY_PY_UBLUEPY_CENTRAL
+#endif // MICROPY_PY_BLE_CENTRAL
