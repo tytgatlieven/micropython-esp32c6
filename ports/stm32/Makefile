@@ -210,7 +210,17 @@ endif
 
 EXTMOD_SRC_C = $(addprefix extmod/,\
 	modonewire.c \
-        )
+	ble/modble.c \
+	ble/modble_characteristic.c \
+	ble/modble_constants.c \
+	ble/modble_delegate.c \
+	ble/modble_descriptor.c \
+	ble/modble_peripheral.c \
+	ble/modble_scan_entry.c \
+	ble/modble_scanner.c \
+	ble/modble_service.c \
+	ble/modble_uuid.c \
+    )
 
 DRIVERS_SRC_C = $(addprefix drivers/,\
 	bus/softspi.c \

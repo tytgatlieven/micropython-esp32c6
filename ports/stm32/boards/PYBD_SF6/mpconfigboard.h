@@ -99,6 +99,7 @@ extern struct _spi_bdev_t spi_bdev2;
 #define MICROPY_HW_UART7_RX         (pyb_pin_W22B)
 //#define MICROPY_HW_UART_REPL        PYB_UART_3
 //#define MICROPY_HW_UART_REPL_BAUD   115200
+#define NIMBLE_UART_ID 6
 
 // I2C busses
 #define MICROPY_HW_I2C1_NAME "X"
