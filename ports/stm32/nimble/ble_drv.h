@@ -34,7 +34,8 @@
 #define BLUETOOTH_WEBBLUETOOTH_REPL     (0)
 #define MICROPY_PY_BLE                  (1)
 #define MICROPY_PY_BLE_PERIPHERAL       (1)
-#define MICROPY_PY_BLE_CENTRAL          (1)
+// #define MICROPY_PY_BLE_CENTRAL          (1)
+#define MICROPY_PY_BLE_CENTRAL          (0)
 
 
 #include "nimble/nimble_port.h"

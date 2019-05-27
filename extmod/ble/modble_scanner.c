@@ -29,11 +29,11 @@
 #include "py/runtime.h"
 #include "py/objstr.h"
 #include "py/objlist.h"
+#include "ble_drv.h"
 
 #if MICROPY_PY_BLE_CENTRAL
 
-#include "ble_drv.h"
-#include "mphalport.h"
+#include "py/mphal.h"
 
 STATIC void adv_event_handler(mp_obj_t self_in, uint16_t event_id, ble_drv_adv_data_t * data) {
     ble_scanner_obj_t *self = MP_OBJ_TO_PTR(self_in);

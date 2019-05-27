@@ -1,8 +1,5 @@
 # Makefile directives for Apache mynewt nimble BLE component
 
-SRC_MOD += \
-	modnimble.c \
-
 NIMBLE_DIR = lib/mynewt-nimble
 SRC_NIMBLE += $(addprefix $(NIMBLE_DIR)/nimble/host/src/, \
 	ble_att.c \
@@ -81,6 +78,7 @@ SRC_NIMBLE += \
 	nimble/npl_os.c \
 	nimble/hci_uart.c \
 	nimble/nimble_nus.c \
+	nimble/nimble_ble_drv.c \
 
 INC += -Inimble # for bsp/bsp.h, hal/hal_gpio.h, hal/hal_uart.h
 INC += -I$(TOP)/$(NIMBLE_DIR) # for nimble/host/src/ble_hs_hci_priv.h"

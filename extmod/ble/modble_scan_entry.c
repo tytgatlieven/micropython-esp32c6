@@ -32,10 +32,10 @@
 #include "py/objarray.h"
 #include "py/objtuple.h"
 #include "py/qstr.h"
+#include "ble_drv.h"
 
 #if MICROPY_PY_BLE_CENTRAL
 
-#include "ble_drv.h"
 
 STATIC void ble_scan_entry_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
     ble_scan_entry_obj_t * self = (ble_scan_entry_obj_t *)o;

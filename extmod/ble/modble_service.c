@@ -27,11 +27,11 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/objlist.h"
+#include "ble_drv.h"
 
 #if MICROPY_PY_BLE_PERIPHERAL || MICROPY_PY_BLE_CENTRAL
 
 #include "modble.h"
-#include "ble_drv.h"
 
 STATIC void ble_service_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
     ble_service_obj_t * self = (ble_service_obj_t *)o;

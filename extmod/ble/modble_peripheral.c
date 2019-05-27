@@ -29,10 +29,10 @@
 #include "py/runtime.h"
 #include "py/objstr.h"
 #include "py/objlist.h"
+#include "ble_drv.h"
 
 #if MICROPY_PY_BLE
 
-#include "ble_drv.h"
 
 STATIC void ble_peripheral_print(const mp_print_t *print, mp_obj_t o, mp_print_kind_t kind) {
     ble_peripheral_obj_t * self = (ble_peripheral_obj_t *)o;

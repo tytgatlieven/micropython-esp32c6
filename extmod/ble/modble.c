@@ -28,11 +28,11 @@
 #include <stdint.h>
 #include "py/obj.h"
 #include "py/runtime.h"
+#include "mpconfigboard.h"
 
 #if MICROPY_PY_BLE
 
 #include "led.h"
-#include "mpconfigboard.h"
 #include "ble_drv.h"
 
 extern const mp_obj_type_t ble_peripheral_type;

@@ -28,255 +28,131 @@
 
 #include "py/runtime.h"
 #include "py/mphal.h"
-#include "py/ringbuf.h"
-#include "rng.h"
+#include "systick.h"
+#include "pendsv.h"
 
 #if MICROPY_PY_NIMBLE
 
-#include "nimble/nimble_port.h"
+#include "ble_drv.h"
 #include "nimble/ble.h"
+#include "nimble/nimble_port.h"
+#include "transport/uart/ble_hci_uart.h"
+#include "nimble/host/src/ble_hs_hci_priv.h" // for ble_hs_hci_cmd_tx
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
 
 /******************************************************************************/
-// MOST OF THE CODE FROM HERE DOWN IS TAKEN FROM A NIMBLE EXAMPLE
+// Misc functions needed by Nimble
 
-/** GATT server. */
-#define GATT_SVR_SVC_ALERT_UUID               0x1811
-#define GATT_SVR_CHR_SUP_NEW_ALERT_CAT_UUID   0x2A47
-#define GATT_SVR_CHR_NEW_ALERT                0x2A46
-#define GATT_SVR_CHR_SUP_UNR_ALERT_CAT_UUID   0x2A48
-#define GATT_SVR_CHR_UNR_ALERT_STAT_UUID      0x2A45
-#define GATT_SVR_CHR_ALERT_NOT_CTRL_PT        0x2A44
+#include <stdarg.h>
 
-#undef MODLOG_DFLT
-#define MODLOG_DFLT(level, ...) printf(__VA_ARGS__)
+int sprintf(char *str, const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int ret = vsnprintf(str, 65535, fmt, ap);
+    va_end(ap);
+    return ret;
+}
 
+// TODO deal with root pointers
+
+#if 1
+#undef malloc
+#undef realloc
+#undef free
+void *malloc(size_t size) {
+    printf("NIMBLE malloc(%u)\n", (uint)size);
+    return m_malloc(size);
+}
+void free(void *ptr) {
+    printf("NIMBLE free(%p)\n", ptr);
+    return m_free(ptr);
+}
+void *realloc(void *ptr, size_t size) {
+    printf("NIMBLE realloc(%p, %u)\n", ptr, (uint)size);
+    return m_realloc(ptr, size);
+}
+#endif
+
+/******************************************************************************/
+// RUN LOOP
+
+static bool run_loop_up = false;
 static uint16_t nus_conn_handle;
 
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 
-/**
- * The vendor specific security test service consists of two characteristics:
- *     o random-number-generator: generates a random 32-bit number each time
- *       it is read.  This characteristic can only be read over an encrypted
- *       connection.
- *     o static-value: a single-byte characteristic that can always be read,
- *       but can only be written over an encrypted connection.
- */
+extern void nimble_uart_process(void);
+extern void os_eventq_run_all(void);
+extern void os_callout_process(void);
 
-//const NUS_SERVICE_ID = '6e400001b5a3f393e0a9e50e24dcca9e';
-static const ble_uuid128_t gatt_svr_svc_nus =
-    BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E);
-
-//const NUS_RX_CHAR = '6e400002b5a3f393e0a9e50e24dcca9e';
-static const ble_uuid128_t gatt_svr_chr_rx =
-    BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x02, 0x00, 0x40, 0x6E);
-
-//const NUS_TX_CHAR = '6e400003b5a3f393e0a9e50e24dcca9e';
-static const ble_uuid128_t gatt_svr_chr_tx =
-    BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x03, 0x00, 0x40, 0x6E);
-
-static uint16_t ble_nus_tx_handle;
-
-static int gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg);
-
-static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
-    {
-        /*** Service: Security test. */
-        .type = BLE_GATT_SVC_TYPE_PRIMARY,
-        .uuid = &gatt_svr_svc_nus.u,
-        .characteristics = (struct ble_gatt_chr_def[]) {
-            {
-                /*** Characteristic: RX, writable */
-                .uuid = &gatt_svr_chr_rx.u,
-                .access_cb = gatt_svr_chr_access_sec_test,
-                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
-            },
-            {
-                /*** Characteristic: TX, notifies */
-                .uuid = &gatt_svr_chr_tx.u,
-                .val_handle = &ble_nus_tx_handle,
-                .access_cb = gatt_svr_chr_access_sec_test,
-                .flags = BLE_GATT_CHR_F_NOTIFY,
-            },
-            {
-                0, /* No more characteristics in this service. */
-            }
-        },
-    },
-
-    {
-        0, /* No more services. */
-    },
-};
-
-static uint8_t nus_in_buf[256];
-static ringbuf_t nus_in_ringbuf = { nus_in_buf, sizeof(nus_in_buf), 0, 0 };
-
-int ble_nus_read_char(void) {
-    return ringbuf_get(&nus_in_ringbuf);
-}
-
-static int gatt_svr_chr_access_sec_test(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg) {
-    if (ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR) {
-        struct os_mbuf *om = ctxt->om;
-        while (om) {
-            //printf("GOT: %.*s\n", om->om_len, om->om_data);
-            for (size_t i = 0; i < om->om_len; ++i) {
-                ringbuf_put(&nus_in_ringbuf, om->om_data[i]);
-            }
-            om = SLIST_NEXT(om, om_next);
-        }
-        return 0;
-    }
-    return BLE_ATT_ERR_UNLIKELY;
-}
-
-static void
-gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
-{
-    char buf[BLE_UUID_STR_LEN];
-
-    switch (ctxt->op) {
-    case BLE_GATT_REGISTER_OP_SVC:
-        MODLOG_DFLT(DEBUG, "registered service %s with handle=%d\n",
-                    ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
-                    ctxt->svc.handle);
-        break;
-
-    case BLE_GATT_REGISTER_OP_CHR:
-        MODLOG_DFLT(DEBUG, "registering characteristic %s with "
-                           "def_handle=%d val_handle=%d\n",
-                    ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
-                    ctxt->chr.def_handle,
-                    ctxt->chr.val_handle);
-        break;
-
-    case BLE_GATT_REGISTER_OP_DSC:
-        MODLOG_DFLT(DEBUG, "registering descriptor %s with handle=%d\n",
-                    ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
-                    ctxt->dsc.handle);
-        break;
-
-    default:
-        assert(0);
-        break;
-    }
-}
-
-static int
-gatt_svr_init(void)
-{
-    int rc;
-
-    rc = ble_gatts_reset();
-    printf("ble_gatts_reset() -> %d\n", rc);
-
-    rc = ble_gatts_count_cfg(gatt_svr_svcs);
-    if (rc != 0) {
-        return rc;
-    }
-
-    rc = ble_gatts_add_svcs(gatt_svr_svcs);
-    if (rc != 0) {
-        return rc;
-    }
-
-    rc = ble_gatts_start();
-    printf("ble_gatts_start() -> %d\n", rc);
-
-    return 0;
-}
-
-void ble_nus_write(size_t len, const uint8_t *buf) {
-    // protect against reentering nimble stack
-    if (__get_PRIMASK() != 0) {
-        // irqs disabled
-        return;
-    }
-    if (__get_BASEPRI() != 0) {
-        // priority raised
-        return;
-    }
-    uint32_t vectactive = SCB->ICSR & 0x1ff;
-    if (vectactive != 0) {
-        // irq active
+STATIC void nimble_poll(void) {
+    if (!run_loop_up) {
         return;
     }
 
-    MICROPY_PY_LWIP_ENTER
-    if (nus_conn_handle != 0) {
-        while (len) {
-            size_t l = len < 20 ? len : 20;
-            struct os_mbuf *om = ble_hs_mbuf_from_flat(buf, l);
-            if (om == NULL) {
-                break;
-            }
-            ble_gattc_notify_custom(nus_conn_handle, ble_nus_tx_handle, om);
-            len -= l;
-            buf += l;
-            if (len) {
-                MICROPY_PY_LWIP_EXIT
-                mp_hal_delay_ms(100);
-                MICROPY_PY_LWIP_REENTER
-                if (nus_conn_handle == 0) {
-                    break;
-                }
-            }
-        }
-    }
-    MICROPY_PY_LWIP_EXIT
+    nimble_uart_process();
+    os_callout_process();
+    os_eventq_run_all();
 }
 
-void
-print_bytes(const uint8_t *bytes, int len)
-{
-    int i;
+// Poll nimble every 128ms
+#define NIMBLE_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & 0x7f) == 0)
 
-    for (i = 0; i < len; i++) {
-        MODLOG_DFLT(INFO, "%s0x%02x", i != 0 ? ":" : "", bytes[i]);
+void nimble_poll_wrapper(uint32_t ticks_ms) {
+    if (run_loop_up && NIMBLE_TICK(ticks_ms)) {
+        pendsv_schedule_dispatch(PENDSV_DISPATCH_NIMBLE, nimble_poll);
     }
 }
 
-void
-print_addr(const void *addr)
-{
-    const uint8_t *u8p;
+/******************************************************************************/
+// BINDINGS
 
-    u8p = addr;
-    MODLOG_DFLT(INFO, "%02x:%02x:%02x:%02x:%02x:%02x",
-                u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
+extern void ble_app_nus_init(void);
+extern int ble_nus_read_char(void);
+extern void ble_nus_write(size_t len, const uint8_t *buf);
+
+uint32_t ble_drv_stack_enable(void) {
+    int32_t err_code = 0;
+
+    ble_app_nus_init();
+
+    ble_hci_uart_init();
+
+    printf("nimble_port_init\n");
+    nimble_port_init();
+    ble_hs_sched_start();
+    printf("nimble_port_init: done\n");
+
+    run_loop_up = true;
+
+    systick_enable_dispatch(SYSTICK_DISPATCH_NIMBLE, nimble_poll_wrapper);
+
+    err_code = ble_gatts_reset();
+    printf("ble_gatts_reset() -> %d\n", (int)err_code);
+
+    return err_code;
 }
 
-static void
-bleprph_print_conn_desc(struct ble_gap_conn_desc *desc)
-{
-    MODLOG_DFLT(INFO, "handle=%d our_ota_addr_type=%d our_ota_addr=",
-                desc->conn_handle, desc->our_ota_addr.type);
-    print_addr(desc->our_ota_addr.val);
-    MODLOG_DFLT(INFO, " our_id_addr_type=%d our_id_addr=",
-                desc->our_id_addr.type);
-    print_addr(desc->our_id_addr.val);
-    MODLOG_DFLT(INFO, " peer_ota_addr_type=%d peer_ota_addr=",
-                desc->peer_ota_addr.type);
-    print_addr(desc->peer_ota_addr.val);
-    MODLOG_DFLT(INFO, " peer_id_addr_type=%d peer_id_addr=",
-                desc->peer_id_addr.type);
-    print_addr(desc->peer_id_addr.val);
-    MODLOG_DFLT(INFO, " conn_itvl=%d conn_latency=%d supervision_timeout=%d "
-                "encrypted=%d authenticated=%d bonded=%d\n",
-                desc->conn_itvl, desc->conn_latency,
-                desc->supervision_timeout,
-                desc->sec_state.encrypted,
-                desc->sec_state.authenticated,
-                desc->sec_state.bonded);
+uint8_t ble_drv_stack_enabled(void) {
+    return run_loop_up;
 }
 
-static void
-bleprph_advertise(void)
+void ble_drv_stack_disable(void) {
+    run_loop_up = false;
+    // mp_hal_pin_low(MICROPY_HW_BLE_RESET_GPIO);
+}
+
+void ble_drv_address_get(ble_drv_addr_t * p_addr) {
+    mp_hal_get_mac(MP_HAL_MAC_BDADDR, p_addr->addr);
+    p_addr->addr_type = BLE_ADDR_TYPE_PUBLIC; // TODO fix this?
+}
+
+bool ble_drv_advertise_data(ble_advertise_data_t * p_adv_params)
 {
+    /* TODO use p_adv_params */
+
     uint8_t own_addr_type;
     struct ble_gap_adv_params adv_params;
     struct ble_hs_adv_fields fields;
@@ -289,7 +165,7 @@ bleprph_advertise(void)
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "error determining address type; rc=%d\n", rc);
-        return;
+        return false;
     }
 
     /**
@@ -322,15 +198,15 @@ bleprph_advertise(void)
     fields.name_is_complete = 1;
 
     fields.uuids16 = (ble_uuid16_t[]){
-        BLE_UUID16_INIT(GATT_SVR_SVC_ALERT_UUID)
+        // BLE_UUID16_INIT(GATT_SVR_SVC_ALERT_UUID)
     };
-    fields.num_uuids16 = 1;
+    fields.num_uuids16 = 0; // 1;
     fields.uuids16_is_complete = 1;
 
     rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "error setting advertisement data; rc=%d\n", rc);
-        return;
+        return false;
     }
 
     /* Begin advertising. */
@@ -344,9 +220,62 @@ bleprph_advertise(void)
                            &adv_params, bleprph_gap_event, NULL);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "error enabling advertisement; rc=%d\n", rc);
-        return;
+        return false;
+    }
+    return true;
+}
+
+void ble_drv_advertise_stop(void) {
+    ble_gap_adv_stop();
+}
+
+bool ble_drv_service_add(ble_service_obj_t * p_service_obj) {
+
+    int rc;
+
+    const struct ble_gatt_svc_def gatt_svr_svcs[] = {
+        {
+            /*** Service: Security test. */
+            .type = BLE_GATT_SVC_TYPE_PRIMARY,
+            .uuid = &gatt_svr_svc_nus.u,
+            .characteristics = (struct ble_gatt_chr_def[]) {
+                {
+                    /*** Characteristic: RX, writable */
+                    .uuid = &gatt_svr_chr_rx.u,
+                    .access_cb = gatt_svr_chr_access_sec_test,
+                    .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+                },
+                {
+                    /*** Characteristic: TX, notifies */
+                    .uuid = &gatt_svr_chr_tx.u,
+                    .val_handle = &ble_nus_tx_handle,
+                    .access_cb = gatt_svr_chr_access_sec_test,
+                    .flags = BLE_GATT_CHR_F_NOTIFY,
+                },
+                {
+                    0, /* No more characteristics in this service. */
+                }
+            },
+        },
+
+        {
+            0, /* No more services. */
+        },
+    };
+
+    rc = ble_gatts_count_cfg(gatt_svr_svcs);
+    if (rc != 0) {
+        return rc;
+    }
+
+    rc = ble_gatts_add_svcs(gatt_svr_svcs);
+    if (rc != 0) {
+        return rc;
     }
 }
+
+
+// INTERNAL
 
 /**
  * The nimble host executes this callback when a GAP event occurs.  The
@@ -478,31 +407,73 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
     return 0;
 }
 
-static void bleprph_on_reset(int reason) {
-    printf("Resetting state; reason=%d\n", reason);
+
+
+// ORIGINAL
+
+// hci_cmd(ogf, ocf, param[, outbuf])
+STATIC mp_obj_t nimble_hci_cmd(size_t n_args, const mp_obj_t *args) {
+    int ogf = mp_obj_get_int(args[0]);
+    int ocf = mp_obj_get_int(args[1]);
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
+
+    uint8_t evt_buf[255];
+    uint8_t evt_len;
+    int rc = ble_hs_hci_cmd_tx(BLE_HCI_OP(ogf, ocf), bufinfo.buf, bufinfo.len, evt_buf, sizeof(evt_buf), &evt_len);
+
+    if (rc != 0) {
+        mp_raise_OSError(-rc);
+    }
+
+    if (n_args == 3) {
+        return mp_obj_new_bytes(evt_buf, evt_len);
+    } else {
+        mp_get_buffer_raise(args[3], &bufinfo, MP_BUFFER_WRITE);
+        if (bufinfo.len < evt_len) {
+            mp_raise_ValueError("buf too small");
+        }
+        memcpy(bufinfo.buf, evt_buf, evt_len);
+        return MP_OBJ_NEW_SMALL_INT(evt_len);
+    }
 }
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(nimble_hci_cmd_obj, 3, 4, nimble_hci_cmd);
 
-static void bleprph_on_sync(void) {
-    printf("on sync\n");
-
-    int rc;
-
-    /* Make sure we have proper identity address set (public preferred) */
-    rc = ble_hs_util_ensure_addr(0);
-    assert(rc == 0);
-
-    gatt_svr_init();
-    ble_svc_gap_device_name_set("PYB");
-
-    /* Begin advertising. */
-    bleprph_advertise();
+STATIC mp_obj_t nimble_nus_read(void) {
+    uint8_t buf[16];
+    size_t i;
+    for (i = 0; i < sizeof(buf); ++i) {
+        int c = ble_nus_read_char();
+        if (c < 0) {
+            break;
+        }
+        buf[i] = c;
+    }
+    return mp_obj_new_bytes(buf, i);
 }
+MP_DEFINE_CONST_FUN_OBJ_0(nimble_nus_read_obj, nimble_nus_read);
 
-void ble_app_nus_init(void) {
-    ble_hs_cfg.reset_cb = bleprph_on_reset;
-    ble_hs_cfg.sync_cb = bleprph_on_sync;
-    ble_hs_cfg.gatts_register_cb = gatt_svr_register_cb;
-    ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+STATIC mp_obj_t nimble_nus_write(mp_obj_t buf) {
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(buf, &bufinfo, MP_BUFFER_READ);
+    ble_nus_write(bufinfo.len, bufinfo.buf);
+    return mp_const_none;
 }
+MP_DEFINE_CONST_FUN_OBJ_1(nimble_nus_write_obj, nimble_nus_write);
+
+STATIC const mp_rom_map_elem_t nimble_module_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_nimble) },
+    // { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&nimble_init_obj) },
+    // { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&nimble_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_hci_cmd), MP_ROM_PTR(&nimble_hci_cmd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_nus_read), MP_ROM_PTR(&nimble_nus_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_nus_write), MP_ROM_PTR(&nimble_nus_write_obj) },
+};
+STATIC MP_DEFINE_CONST_DICT(nimble_module_globals, nimble_module_globals_table);
+
+const mp_obj_module_t nimble_module = {
+    .base = { &mp_type_module },
+    .globals = (mp_obj_dict_t*)&nimble_module_globals,
+};
 
 #endif // MICROPY_PY_NIMBLE

@@ -26,6 +26,7 @@
 
 #include "py/obj.h"
 #include "py/runtime.h"
+#include "ble_drv.h"
 
 #if MICROPY_PY_BLE_PERIPHERAL || MICROPY_PY_BLE_CENTRAL
 
