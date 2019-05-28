@@ -166,11 +166,12 @@ STATIC void mp_soft_qspi_write_cmd_data(void *self_in, uint8_t cmd, size_t len, 
     CS_HIGH(self);
 }
 
-STATIC void mp_soft_qspi_write_cmd_addr_data(void *self_in, uint8_t cmd, uint32_t addr, size_t len, const uint8_t *src) {
+STATIC void mp_soft_qspi_write_cmd_addr_data(void *self_in, uint8_t cmd, uint32_t addr, uint8_t addr_bytes, size_t len, const uint8_t *src) {
     mp_soft_qspi_obj_t *self = (mp_soft_qspi_obj_t*)self_in;
-    uint8_t cmd_buf[4] = {cmd, addr >> 16, addr >> 8, addr};
+    uint32_t addr_buff = __REV(addr);
     CS_LOW(self);
-    mp_soft_qspi_transfer(self, 4, cmd_buf, NULL);
+    mp_soft_qspi_transfer(self, 1, &cmd, NULL);
+    mp_soft_qspi_transfer(self, addr_bytes, (uint8_t*)&addr_buff, NULL);
     mp_soft_qspi_transfer(self, len, src, NULL);
     CS_HIGH(self);
 }
@@ -184,12 +185,14 @@ STATIC uint32_t mp_soft_qspi_read_cmd(void *self_in, uint8_t cmd, size_t len) {
     return cmd_buf >> 8;
 }
 
-STATIC void mp_soft_qspi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_t addr, size_t len, uint8_t *dest) {
+STATIC void mp_soft_qspi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_t addr, uint8_t addr_bytes, size_t len, uint8_t *dest) {
     mp_soft_qspi_obj_t *self = (mp_soft_qspi_obj_t*)self_in;
-    uint8_t cmd_buf[7] = {cmd, addr >> 16, addr >> 8, addr};
+    uint32_t addr_buff = __REV(addr);
+    uint8_t dummy_buf[3] = {0};
     CS_LOW(self);
-    mp_soft_qspi_transfer(self, 1, cmd_buf, NULL);
-    mp_soft_qspi_qwrite(self, 6, &cmd_buf[1]); // 3 addr bytes, 1 extra byte (0), 2 dummy bytes (4 dummy cycles)
+    mp_soft_qspi_transfer(self, 1, &cmd, NULL);
+    mp_soft_qspi_qwrite(self, addr_bytes, (uint8_t*)&addr_buff);
+    mp_soft_qspi_qwrite(self, 3, dummy_buf); // 1 extra byte (0), 2 dummy bytes (4 dummy cycles)
     mp_soft_qspi_qread(self, len, dest);
     CS_HIGH(self);
 }

@@ -89,18 +89,27 @@ void qspi_memory_map(void) {
     // Enable memory-mapped mode
 
     QUADSPI->ABR = 0; // disable continuous read mode
+
+    // For chip addresses over 16MB, 32 bit addressing is required instead of 24 bit
+    uint8_t cmd = 0xeb; // quad read opcode
+    uint8_t adsize = 2; // 24-bit address size
+    if (QSPI_DCR_FSIZE > 24) {
+        cmd = 0xeb; // quad read with 32bit address opcode
+        adsize = 3; // 32-bit address size
+    }
+
     QUADSPI->CCR =
         0 << QUADSPI_CCR_DDRM_Pos // DDR mode disabled
         | 0 << QUADSPI_CCR_SIOO_Pos // send instruction every transaction
         | 3 << QUADSPI_CCR_FMODE_Pos // memory-mapped mode
         | 3 << QUADSPI_CCR_DMODE_Pos // data on 4 lines
-        | 4 << QUADSPI_CCR_DCYC_Pos // 4 dummy cycles
-        | 0 << QUADSPI_CCR_ABSIZE_Pos // 8-bit alternate byte
-        | 3 << QUADSPI_CCR_ABMODE_Pos // alternate byte on 4 lines
-        | 2 << QUADSPI_CCR_ADSIZE_Pos // 24-bit address size
+        | 0 << QUADSPI_CCR_DCYC_Pos // 0 dummy cycles
+        | 1 << QUADSPI_CCR_ABSIZE_Pos // 16-bit alternate byte
+        | 1 << QUADSPI_CCR_ABMODE_Pos // alternate byte on 1 lines
+        | adsize << QUADSPI_CCR_ADSIZE_Pos
         | 3 << QUADSPI_CCR_ADMODE_Pos // address on 4 lines
         | 1 << QUADSPI_CCR_IMODE_Pos // instruction on 1 line
-        | 0xeb << QUADSPI_CCR_INSTRUCTION_Pos // quad read opcode
+        | cmd << QUADSPI_CCR_INSTRUCTION_Pos
         ;
 
     // Use the MPU to allow access to only the valid 2MiB of external SPI flash
@@ -228,7 +237,7 @@ STATIC void qspi_write_cmd_data(void *self_in, uint8_t cmd, size_t len, uint32_t
     QUADSPI->FCR = QUADSPI_FCR_CTCF; // clear TC flag
 }
 
-STATIC void qspi_write_cmd_addr_data(void *self_in, uint8_t cmd, uint32_t addr, size_t len, const uint8_t *src) {
+STATIC void qspi_write_cmd_addr_data(void *self_in, uint8_t cmd, uint32_t addr, uint8_t addr_bytes, size_t len, const uint8_t *src) {
     (void)self_in;
 
     if (QUADSPI->SR & QUADSPI_SR_BUSY) {
@@ -247,7 +256,7 @@ STATIC void qspi_write_cmd_addr_data(void *self_in, uint8_t cmd, uint32_t addr, 
             | 0 << QUADSPI_CCR_DMODE_Pos // no data
             | 0 << QUADSPI_CCR_DCYC_Pos // 0 dummy cycles
             | 0 << QUADSPI_CCR_ABMODE_Pos // no alternate byte
-            | 2 << QUADSPI_CCR_ADSIZE_Pos // 24-bit address size
+            | (addr_bytes-1) << QUADSPI_CCR_ADSIZE_Pos
             | 1 << QUADSPI_CCR_ADMODE_Pos // address on 1 line
             | 1 << QUADSPI_CCR_IMODE_Pos // instruction on 1 line
             | cmd << QUADSPI_CCR_INSTRUCTION_Pos // write opcode
@@ -264,7 +273,7 @@ STATIC void qspi_write_cmd_addr_data(void *self_in, uint8_t cmd, uint32_t addr, 
             | 1 << QUADSPI_CCR_DMODE_Pos // data on 1 line
             | 0 << QUADSPI_CCR_DCYC_Pos // 0 dummy cycles
             | 0 << QUADSPI_CCR_ABMODE_Pos // no alternate byte
-            | 2 << QUADSPI_CCR_ADSIZE_Pos // 24-bit address size
+            | (addr_bytes-1) << QUADSPI_CCR_ADSIZE_Pos
             | 1 << QUADSPI_CCR_ADMODE_Pos // address on 1 line
             | 1 << QUADSPI_CCR_IMODE_Pos // instruction on 1 line
             | cmd << QUADSPI_CCR_INSTRUCTION_Pos // write opcode
@@ -323,7 +332,7 @@ STATIC uint32_t qspi_read_cmd(void *self_in, uint8_t cmd, size_t len) {
     return QUADSPI->DR;
 }
 
-STATIC void qspi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_t addr, size_t len, uint8_t *dest) {
+STATIC void qspi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_t addr, uint8_t addr_bytes, size_t len, uint8_t *dest) {
     (void)self_in;
 
     if (QUADSPI->SR & QUADSPI_SR_BUSY) {
@@ -344,7 +353,7 @@ STATIC void qspi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_t addr,
         | 4 << QUADSPI_CCR_DCYC_Pos // 4 dummy cycles
         | 0 << QUADSPI_CCR_ABSIZE_Pos // 8-bit alternate byte
         | 3 << QUADSPI_CCR_ABMODE_Pos // alternate byte on 4 lines
-        | 2 << QUADSPI_CCR_ADSIZE_Pos // 24-bit address size
+        | (addr_bytes-1) << QUADSPI_CCR_ADSIZE_Pos
         | 3 << QUADSPI_CCR_ADMODE_Pos // address on 4 lines
         | 1 << QUADSPI_CCR_IMODE_Pos // instruction on 1 line
         | cmd << QUADSPI_CCR_INSTRUCTION_Pos // quad read opcode
