@@ -31,23 +31,45 @@
 #include "qspi.h"
 #include "pin_static_af.h"
 
-#if defined(MICROPY_HW_QSPIFLASH_SIZE_BITS_LOG2)
+#if defined(MICROPY_HW_QSPIFLASH_SIZE_BYTES) || defined(MICROPY_HW_QSPIFLASH_SIZE_BITS_LOG2)
 
 #ifndef MICROPY_HW_QSPI_PRESCALER
-#define MICROPY_HW_QSPI_PRESCALER       3  // F_CLK = F_AHB/3 (72MHz when CPU is 216MHz)
+#define MICROPY_HW_QSPI_PRESCALER            3  // F_CLK = F_AHB/3 (72MHz when CPU is 216MHz)
 #endif
 
 #ifndef MICROPY_HW_QSPI_SAMPLE_SHIFT
-#define MICROPY_HW_QSPI_SAMPLE_SHIFT    1  // sample shift enabled
+#define MICROPY_HW_QSPI_SAMPLE_SHIFT         1  // sample shift enabled
 #endif
 
 #ifndef MICROPY_HW_QSPI_TIMEOUT_COUNTER
-#define MICROPY_HW_QSPI_TIMEOUT_COUNTER 0  // timeout counter disabled (see F7 errata)
+#define MICROPY_HW_QSPI_TIMEOUT_COUNTER      0  // timeout counter disabled (see F7 errata)
 #endif
 
 #ifndef MICROPY_HW_QSPI_CS_HIGH_CYCLES
-#define MICROPY_HW_QSPI_CS_HIGH_CYCLES  2  // nCS stays high for 2 cycles
+#define MICROPY_HW_QSPI_CS_HIGH_CYCLES       2  // nCS stays high for 2 cycles
 #endif
+
+#ifndef MICROPY_HW_QSPI_ENABLE_MPU_CACHING
+#define MICROPY_HW_QSPI_ENABLE_MPU_CACHING   0 // MPU deny access by default
+#endif
+
+#ifndef MICROPY_HW_QSPI_ENABLE_MEMORY_MAPPED
+#define MICROPY_HW_QSPI_ENABLE_MEMORY_MAPPED 1 // Memory mapped mode enabled in idle
+#endif
+
+// Provides the MPU_REGION_SIZE_X value when passed the size of region in bytes
+// "m" must be a power of 2 between 32 and 4G (2**5 and 2**32) and this formula
+// computes the log2 of "m", minus 1
+#define MPU_REGION_SIZE(m) (((m) - 1) / (((m) - 1) % 255 + 1) / 255 % 255 * 8 + 7 - 86 / (((m) - 1) % 255 + 12) - 1)
+
+#define QSPI_MPU_REGION_SIZE (MPU_REGION_SIZE(MICROPY_HW_QSPIFLASH_SIZE_BYTES))
+
+#if MICROPY_HW_QSPIFLASH_SIZE_BYTES
+#define QSPI_DCR_FSIZE (MPU_REGION_SIZE(MICROPY_HW_QSPIFLASH_SIZE_BYTES))
+#else
+#define QSPI_DCR_FSIZE (MICROPY_HW_QSPIFLASH_SIZE_BITS_LOG2 -3 -1)
+#endif
+
 
 void qspi_init(void) {
     // Configure pins
@@ -79,16 +101,70 @@ void qspi_init(void) {
         ;
 
     QUADSPI->DCR =
-        (MICROPY_HW_QSPIFLASH_SIZE_BITS_LOG2 - 3 - 1) << QUADSPI_DCR_FSIZE_Pos
+        QSPI_DCR_FSIZE << QUADSPI_DCR_FSIZE_Pos
         | (MICROPY_HW_QSPI_CS_HIGH_CYCLES - 1) << QUADSPI_DCR_CSHT_Pos
         | 0 << QUADSPI_DCR_CKMODE_Pos // CLK idles at low state
         ;
+
+    // Configure explicit MPU Access to QSPI memory region
+
+    // Disable MPU
+    __DMB();
+    SCB->SHCSR &= ~SCB_SHCSR_MEMFAULTENA_Msk;
+    MPU->CTRL = 0;
+
+    // Config MPU to disable speculative acces to entire qspi region
+    MPU->RNR = MPU_REGION_NUMBER1;
+    MPU->RBAR = 0x90000000;
+    MPU->RASR = MPU_INSTRUCTION_ACCESS_DISABLE  << MPU_RASR_XN_Pos   |
+                MPU_REGION_NO_ACCESS            << MPU_RASR_AP_Pos   |
+                MPU_TEX_LEVEL0                  << MPU_RASR_TEX_Pos  |
+                MPU_ACCESS_NOT_SHAREABLE        << MPU_RASR_S_Pos    |
+                MPU_ACCESS_NOT_CACHEABLE        << MPU_RASR_C_Pos    |
+                MPU_ACCESS_NOT_BUFFERABLE       << MPU_RASR_B_Pos    |
+                0x00                            << MPU_RASR_SRD_Pos  |
+                MPU_REGION_SIZE_256MB           << MPU_RASR_SIZE_Pos |
+                MPU_REGION_ENABLE               << MPU_RASR_ENABLE_Pos;
+    __ISB();
+    __DSB();
+    __DMB();
+
+#if MICROPY_HW_QSPI_ENABLE_MPU_CACHING
+    // Config MPU to allow normal access to active qspi region
+    MPU->RNR = MPU_REGION_NUMBER2;
+    MPU->RBAR = 0x90000000;
+    MPU->RASR = MPU_INSTRUCTION_ACCESS_DISABLE  << MPU_RASR_XN_Pos   |
+                MPU_REGION_PRIV_RO              << MPU_RASR_AP_Pos   |
+                MPU_TEX_LEVEL0                  << MPU_RASR_TEX_Pos  |
+                MPU_ACCESS_NOT_SHAREABLE        << MPU_RASR_S_Pos    |
+                MPU_ACCESS_CACHEABLE            << MPU_RASR_C_Pos    |
+                MPU_ACCESS_NOT_BUFFERABLE       << MPU_RASR_B_Pos    |
+                0x00                            << MPU_RASR_SRD_Pos  |
+                QSPI_MPU_REGION_SIZE            << MPU_RASR_SIZE_Pos |
+                MPU_REGION_ENABLE               << MPU_RASR_ENABLE_Pos;
+    __ISB();
+    __DSB();
+    __DMB();
+#endif
+
+    // Enable MPU
+    MPU->CTRL = MPU_PRIVILEGED_DEFAULT | MPU_CTRL_ENABLE_Msk;
+    SCB->SHCSR |= SCB_SHCSR_MEMFAULTENA_Msk;
+    __DSB();
+    __ISB();
 }
 
 void qspi_memory_map(void) {
+#if MICROPY_HW_QSPI_ENABLE_MEMORY_MAPPED
+
     // Enable memory-mapped mode
 
     QUADSPI->ABR = 0; // disable continuous read mode
+
+    // Clear fifo
+    QUADSPI->CR |= QUADSPI_CR_ABORT;
+    while (QUADSPI->CR & QUADSPI_CR_ABORT) {
+    }
 
     // For chip addresses over 16MB, 32 bit addressing is required instead of 24 bit
     uint8_t cmd = 0xeb; // quad read opcode
@@ -112,66 +188,11 @@ void qspi_memory_map(void) {
         | cmd << QUADSPI_CCR_INSTRUCTION_Pos
         ;
 
-    // Use the MPU to allow access to only the valid 2MiB of external SPI flash
+#else // ! MICROPY_HW_QSPI_ENABLE_MEMORY_MAPPED
 
-    // Disable MPU
-    __DMB();
-    SCB->SHCSR &= ~SCB_SHCSR_MEMFAULTENA_Msk;
-    MPU->CTRL = 0;
-
-    // Config MPU region
-    MPU->RNR = MPU_REGION_NUMBER1;
-    MPU->RBAR = 0x90000000;
-    MPU->RASR = MPU_INSTRUCTION_ACCESS_DISABLE  << MPU_RASR_XN_Pos   |
-                MPU_REGION_NO_ACCESS            << MPU_RASR_AP_Pos   |
-                MPU_TEX_LEVEL0                  << MPU_RASR_TEX_Pos  |
-                MPU_ACCESS_NOT_SHAREABLE        << MPU_RASR_S_Pos    |
-                MPU_ACCESS_NOT_CACHEABLE        << MPU_RASR_C_Pos    |
-                MPU_ACCESS_NOT_BUFFERABLE       << MPU_RASR_B_Pos    |
-                0x01                            << MPU_RASR_SRD_Pos  |
-                MPU_REGION_SIZE_256MB           << MPU_RASR_SIZE_Pos |
-                MPU_REGION_ENABLE               << MPU_RASR_ENABLE_Pos;
-    __ISB();
-    __DSB();
-    __DMB();
-
-    // Config MPU region
-    MPU->RNR = MPU_REGION_NUMBER2;
-    MPU->RBAR = 0x90000000;
-    MPU->RASR = MPU_INSTRUCTION_ACCESS_DISABLE  << MPU_RASR_XN_Pos   |
-                MPU_REGION_NO_ACCESS            << MPU_RASR_AP_Pos   |
-                MPU_TEX_LEVEL0                  << MPU_RASR_TEX_Pos  |
-                MPU_ACCESS_NOT_SHAREABLE        << MPU_RASR_S_Pos    |
-                MPU_ACCESS_NOT_CACHEABLE        << MPU_RASR_C_Pos    |
-                MPU_ACCESS_NOT_BUFFERABLE       << MPU_RASR_B_Pos    |
-                0x0f                            << MPU_RASR_SRD_Pos  |
-                MPU_REGION_SIZE_32MB            << MPU_RASR_SIZE_Pos |
-                MPU_REGION_ENABLE               << MPU_RASR_ENABLE_Pos;
-    __ISB();
-    __DSB();
-    __DMB();
-
-    // Config MPU region
-    MPU->RNR = MPU_REGION_NUMBER3;
-    MPU->RBAR = 0x90000000;
-    MPU->RASR = MPU_INSTRUCTION_ACCESS_DISABLE  << MPU_RASR_XN_Pos   |
-                MPU_REGION_NO_ACCESS            << MPU_RASR_AP_Pos   |
-                MPU_TEX_LEVEL0                  << MPU_RASR_TEX_Pos  |
-                MPU_ACCESS_NOT_SHAREABLE        << MPU_RASR_S_Pos    |
-                MPU_ACCESS_NOT_CACHEABLE        << MPU_RASR_C_Pos    |
-                MPU_ACCESS_NOT_BUFFERABLE       << MPU_RASR_B_Pos    |
-                0x01                            << MPU_RASR_SRD_Pos  |
-                MPU_REGION_SIZE_16MB            << MPU_RASR_SIZE_Pos |
-                MPU_REGION_ENABLE               << MPU_RASR_ENABLE_Pos;
-    __ISB();
-    __DSB();
-    __DMB();
-
-    // Enable MPU
-    MPU->CTRL = MPU_PRIVILEGED_DEFAULT | MPU_CTRL_ENABLE_Msk;
-    SCB->SHCSR |= SCB_SHCSR_MEMFAULTENA_Msk;
-    __DSB();
-    __ISB();
+    // Disable memory mapped mode entirely
+    return;
+#endif
 }
 
 STATIC int qspi_ioctl(void *self_in, uint32_t cmd) {

@@ -27,7 +27,7 @@ void board_early_init(void);
 #define MICROPY_HW_FLASH_LATENCY    FLASH_LATENCY_7 // 210-216 MHz needs 7 wait states
 
 // 512MBit external QSPI flash, to be memory mapped
-#define MICROPY_HW_QSPIFLASH_SIZE_BITS_LOG2 (29)
+#define MICROPY_HW_QSPIFLASH_SIZE_BYTES (64*1024*1024)
 #define MICROPY_HW_QSPIFLASH_CS     (pin_B6)
 #define MICROPY_HW_QSPIFLASH_SCK    (pin_B2)
 #define MICROPY_HW_QSPIFLASH_IO0    (pin_C9)

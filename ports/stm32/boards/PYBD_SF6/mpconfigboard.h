@@ -56,7 +56,7 @@ extern struct _spi_bdev_t spi_bdev;
 #define MICROPY_HW_BDEV_WRITEBLOCKS(src, bl, n) spi_bdev_writeblocks(&spi_bdev, (src), (bl), (n))
 
 // additional SPI flash, to be memory mapped
-#define MICROPY_HW_QSPIFLASH_SIZE_BITS_LOG2 (24)
+#define MICROPY_HW_QSPIFLASH_SIZE_BYTES (2*1024*1024)
 #define MICROPY_HW_QSPIFLASH_CS     (pyb_pin_QSPI_CS)
 #define MICROPY_HW_QSPIFLASH_SCK    (pyb_pin_QSPI_CLK)
 #define MICROPY_HW_QSPIFLASH_IO0    (pyb_pin_QSPI_D0)
@@ -69,7 +69,7 @@ extern const struct _mp_spiflash_config_t spiflash2_config;
 extern struct _spi_bdev_t spi_bdev2;
 #if 0
 #define MICROPY_HW_BDEV2_IOCTL(op, arg) ( \
-    (op) == BDEV_IOCTL_NUM_BLOCKS ? ((1 << (MICROPY_HW_QSPIFLASH_SIZE_BITS_LOG2 - 3)) / FLASH_BLOCK_SIZE) : \
+    (op) == BDEV_IOCTL_NUM_BLOCKS ? (MICROPY_HW_QSPIFLASH_SIZE_BYTES / FLASH_BLOCK_SIZE) : \
     (op) == BDEV_IOCTL_INIT ? spi_bdev_ioctl(&spi_bdev2, (op), (uint32_t)&spiflash2_config) : \
     spi_bdev_ioctl(&spi_bdev2, (op), (arg)) \
 )
