@@ -80,34 +80,33 @@ STATIC mp_obj_t ble_uuid_make_new(const mp_obj_type_t *type, size_t n_args, size
             s->value[1] += unichar_xdigit_value(str_data[2]) << 4;
         } else if (str_len == 36) {
             s->type = BLE_UUID_128_BIT;
-            uint8_t buffer[16];
-            buffer[0]  = unichar_xdigit_value(str_data[35]);
-            buffer[0] += unichar_xdigit_value(str_data[34]) << 4;
-            buffer[1]  = unichar_xdigit_value(str_data[33]);
-            buffer[1] += unichar_xdigit_value(str_data[32]) << 4;
-            buffer[2]  = unichar_xdigit_value(str_data[31]);
-            buffer[2] += unichar_xdigit_value(str_data[30]) << 4;
-            buffer[3]  = unichar_xdigit_value(str_data[29]);
-            buffer[3] += unichar_xdigit_value(str_data[28]) << 4;
-            buffer[4]  = unichar_xdigit_value(str_data[27]);
-            buffer[4] += unichar_xdigit_value(str_data[26]) << 4;
-            buffer[5]  = unichar_xdigit_value(str_data[25]);
-            buffer[5] += unichar_xdigit_value(str_data[24]) << 4;
+            s->value[0]  = unichar_xdigit_value(str_data[35]);
+            s->value[0] += unichar_xdigit_value(str_data[34]) << 4;
+            s->value[1]  = unichar_xdigit_value(str_data[33]);
+            s->value[1] += unichar_xdigit_value(str_data[32]) << 4;
+            s->value[2]  = unichar_xdigit_value(str_data[31]);
+            s->value[2] += unichar_xdigit_value(str_data[30]) << 4;
+            s->value[3]  = unichar_xdigit_value(str_data[29]);
+            s->value[3] += unichar_xdigit_value(str_data[28]) << 4;
+            s->value[4]  = unichar_xdigit_value(str_data[27]);
+            s->value[4] += unichar_xdigit_value(str_data[26]) << 4;
+            s->value[5]  = unichar_xdigit_value(str_data[25]);
+            s->value[5] += unichar_xdigit_value(str_data[24]) << 4;
             // 23 '-'
-            buffer[6]  = unichar_xdigit_value(str_data[22]);
-            buffer[6] += unichar_xdigit_value(str_data[21]) << 4;
-            buffer[7]  = unichar_xdigit_value(str_data[20]);
-            buffer[7] += unichar_xdigit_value(str_data[19]) << 4;
+            s->value[6]  = unichar_xdigit_value(str_data[22]);
+            s->value[6] += unichar_xdigit_value(str_data[21]) << 4;
+            s->value[7]  = unichar_xdigit_value(str_data[20]);
+            s->value[7] += unichar_xdigit_value(str_data[19]) << 4;
             // 18 '-'
-            buffer[8]  = unichar_xdigit_value(str_data[17]);
-            buffer[8] += unichar_xdigit_value(str_data[16]) << 4;
-            buffer[9]  = unichar_xdigit_value(str_data[15]);
-            buffer[9] += unichar_xdigit_value(str_data[14]) << 4;
+            s->value[8]  = unichar_xdigit_value(str_data[17]);
+            s->value[8] += unichar_xdigit_value(str_data[16]) << 4;
+            s->value[9]  = unichar_xdigit_value(str_data[15]);
+            s->value[9] += unichar_xdigit_value(str_data[14]) << 4;
             // 13 '-'
-            buffer[10]  = unichar_xdigit_value(str_data[12]);
-            buffer[10] += unichar_xdigit_value(str_data[11]) << 4;
-            buffer[11]  = unichar_xdigit_value(str_data[10]);
-            buffer[11] += unichar_xdigit_value(str_data[9]) << 4;
+            s->value[10]  = unichar_xdigit_value(str_data[12]);
+            s->value[10] += unichar_xdigit_value(str_data[11]) << 4;
+            s->value[11]  = unichar_xdigit_value(str_data[10]);
+            s->value[11] += unichar_xdigit_value(str_data[9]) << 4;
             // 8 '-'
             // 16-bit field
             s->value[0]  = unichar_xdigit_value(str_data[7]);
@@ -115,12 +114,12 @@ STATIC mp_obj_t ble_uuid_make_new(const mp_obj_type_t *type, size_t n_args, size
             s->value[1]  = unichar_xdigit_value(str_data[5]);
             s->value[1] += unichar_xdigit_value(str_data[4]) << 4;
 
-            buffer[14]  = unichar_xdigit_value(str_data[3]);
-            buffer[14] += unichar_xdigit_value(str_data[2]) << 4;
-            buffer[15]  = unichar_xdigit_value(str_data[1]);
-            buffer[15] += unichar_xdigit_value(str_data[0]) << 4;
+            s->value[14]  = unichar_xdigit_value(str_data[3]);
+            s->value[14] += unichar_xdigit_value(str_data[2]) << 4;
+            s->value[15]  = unichar_xdigit_value(str_data[1]);
+            s->value[15] += unichar_xdigit_value(str_data[0]) << 4;
 
-            ble_drv_uuid_add_vs(buffer, &s->uuid_vs_idx);
+            ble_drv_uuid_add_vs(s->value, &s->uuid_vs_idx);
         } else {
             mp_raise_ValueError("Invalid UUID string length");
         }

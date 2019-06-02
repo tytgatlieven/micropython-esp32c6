@@ -57,6 +57,8 @@ int sprintf(char *str, const char *fmt, ...) {
 
 // TODO deal with root pointers
 
+STATIC mp_obj_t characteristic_handles = mp_const_none;
+
 #if 1
 #undef malloc
 #undef realloc
@@ -106,6 +108,57 @@ void nimble_poll_wrapper(uint32_t ticks_ms) {
     }
 }
 
+static int
+gatt_svr_chr_access_gap(uint16_t conn_handle, uint16_t attr_handle, uint8_t op,
+                        union ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    uint16_t uuid16;
+
+    uuid16 = ble_uuid_128_to_16(ctxt->chr_access.chr->uuid128);
+    assert(uuid16 != 0);
+
+    switch (uuid16) {
+    case BLE_GAP_CHR_UUID16_DEVICE_NAME:
+        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+        ctxt->chr_access.data = (void *)bleprph_device_name;
+        ctxt->chr_access.len = strlen(bleprph_device_name);
+        break;
+
+    case BLE_GAP_CHR_UUID16_APPEARANCE:
+        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+        ctxt->chr_access.data = (void *)&bleprph_appearance;
+        ctxt->chr_access.len = sizeof bleprph_appearance;
+        break;
+
+    case BLE_GAP_CHR_UUID16_PERIPH_PRIV_FLAG:
+        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+        ctxt->chr_access.data = (void *)&bleprph_privacy_flag;
+        ctxt->chr_access.len = sizeof bleprph_privacy_flag;
+        break;
+
+    case BLE_GAP_CHR_UUID16_RECONNECT_ADDR:
+        assert(op == BLE_GATT_ACCESS_OP_WRITE_CHR);
+        if (ctxt->chr_access.len != sizeof bleprph_reconnect_addr) {
+            return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+        }
+        memcpy(bleprph_reconnect_addr, ctxt->chr_access.data,
+               sizeof bleprph_reconnect_addr);
+        break;
+
+    case BLE_GAP_CHR_UUID16_PERIPH_PREF_CONN_PARAMS:
+        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+        ctxt->chr_access.data = (void *)&bleprph_pref_conn_params;
+        ctxt->chr_access.len = sizeof bleprph_pref_conn_params;
+        break;
+
+    default:
+        assert(0);
+        break;
+    }
+
+    return 0;
+}
+
 /******************************************************************************/
 // BINDINGS
 
@@ -131,6 +184,8 @@ uint32_t ble_drv_stack_enable(void) {
 
     err_code = ble_gatts_reset();
     printf("ble_gatts_reset() -> %d\n", (int)err_code);
+
+    ble_hs_cfg.gatts_register_cb = gatt_svr_register_cb;
 
     return err_code;
 }
@@ -229,49 +284,148 @@ void ble_drv_advertise_stop(void) {
     ble_gap_adv_stop();
 }
 
+STATIC ble_uuid_any_t uuid_obj_to_nimble_uuid(ble_uuid_obj_t *u) {
+    ble_uuid_any_t nimble_uuid;// = BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E);
+    switch(u->ble_uuid_type_t) {
+        case BLE_UUID_16_BIT:
+        nimble_uuid.u16.u.type = BLE_UUID_TYPE_16;
+        nimble_uuid.u16.value = (u->value[1] << 8) | u->value[0];
+        break;
+
+        case BLE_UUID_128_BIT:
+        nimble_uuid.u16.u.type = BLE_UUID_TYPE_128;
+        memcpy(nimble_uuid.u16.value, u->value, 16);
+        break;
+
+        default:
+        // TODO: print error?
+    }
+    return nimble_uuid
+}
+
+void ble_drv_finalise(ble_peripheral_obj_t * p_peripheral_obj) {
+    if (p_peripheral_obj->initialised) {
+        return;
+    }
+
+    // finalise all services
+    mp_obj_t * services = NULL;
+    mp_uint_t  num_services;
+    mp_obj_get_array(self->service_list, &num_services, &services);
+    for (uint16_t s = 0; s < num_services; s++) {
+        ble_service_obj_t * p_service = (ble_service_obj_t *)services[s];
+
+        mp_obj_t * chars = NULL;
+        mp_uint_t  num_chars;
+        mp_obj_get_array(p_service->char_list, &num_chars, &chars);
+
+        ble_uuid_any_t svc_uuid = uuid_obj_to_nimble_uuid(p_service.p_uuid);
+
+        struct ble_gatt_svc_def service_def[] = {
+            {
+                /*** Service: Security test. */
+                .type = BLE_GATT_SVC_TYPE_PRIMARY,
+                .uuid = &svc_uuid.u,
+                .characteristics = (struct ble_gatt_chr_def[num_chars]);
+            //     .characteristics = (struct ble_gatt_chr_def[]) {
+            //         {
+            //             /*** Characteristic: RX, writable */
+            //             .uuid = &gatt_svr_chr_rx.u,
+            //             .access_cb = gatt_svr_chr_access_sec_test,
+            //             .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+            //         },
+            //         {
+            //             /*** Characteristic: TX, notifies */
+            //             .uuid = &gatt_svr_chr_tx.u,
+            //             .val_handle = &ble_nus_tx_handle,
+            //             .access_cb = gatt_svr_chr_access_sec_test,
+            //             .flags = BLE_GATT_CHR_F_NOTIFY,
+            //         },
+            //         {
+            //             0, /* No more characteristics in this service. */
+            //         }
+            //     },
+            // },
+            {0,},
+        };
+        
+        ble_uuid_any_t char_uuids[num_chars];
+        for (uint16_t c = 0; c < num_chars; c++) {
+            ble_characteristic_obj_t * p_char = (ble_characteristic_obj_t *)chars[c];
+
+            uint32_t flags = 0
+            flags += (p_char->props & BLE_PROP_READ)?BLE_GATT_CHR_F_READ:0;
+            flags += (p_char->props & BLE_PROP_WRITE)?BLE_GATT_CHR_F_WRITE:0;
+            flags += (p_char->props & BLE_PROP_NOTIFY)?BLE_GATT_CHR_F_NOTIFY:0;
+            // TODO convert more flags
+
+            char_uuids[c] = uuid_obj_to_nimble_uuid(p_char->p_uuid);
+            service_def[0].characteristics[c].uuid = &char_uuids[c].u,
+            service_def[0].characteristics[c].access_cb = gatt_svr_chr_access_gap,
+            service_def[0].characteristics[c].flags = flags,
+        }
+
+
+        rc = ble_gatts_count_cfg(service_def);
+        if (rc != 0) {
+            return rc;
+        }
+
+        rc = ble_gatts_add_svcs(service_def);
+        if (rc != 0) {
+            return rc;
+        }
+
+    }
+
+}
+
 bool ble_drv_service_add(ble_service_obj_t * p_service_obj) {
 
-    int rc;
+    // int rc;
 
-    const struct ble_gatt_svc_def gatt_svr_svcs[] = {
-        {
-            /*** Service: Security test. */
-            .type = BLE_GATT_SVC_TYPE_PRIMARY,
-            .uuid = &gatt_svr_svc_nus.u,
-            .characteristics = (struct ble_gatt_chr_def[]) {
-                {
-                    /*** Characteristic: RX, writable */
-                    .uuid = &gatt_svr_chr_rx.u,
-                    .access_cb = gatt_svr_chr_access_sec_test,
-                    .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
-                },
-                {
-                    /*** Characteristic: TX, notifies */
-                    .uuid = &gatt_svr_chr_tx.u,
-                    .val_handle = &ble_nus_tx_handle,
-                    .access_cb = gatt_svr_chr_access_sec_test,
-                    .flags = BLE_GATT_CHR_F_NOTIFY,
-                },
-                {
-                    0, /* No more characteristics in this service. */
-                }
-            },
-        },
+    // p_service_obj->
 
-        {
-            0, /* No more services. */
-        },
-    };
+    // const struct ble_gatt_svc_def gatt_svr_svcs[] = {
+    //     {
+    //         /*** Service: Security test. */
+    //         .type = BLE_GATT_SVC_TYPE_PRIMARY,
+    //         .uuid = &gatt_svr_svc_nus.u,
+    //         .characteristics = (struct ble_gatt_chr_def[]) {
+    //             {
+    //                 /*** Characteristic: RX, writable */
+    //                 .uuid = &gatt_svr_chr_rx.u,
+    //                 .access_cb = gatt_svr_chr_access_sec_test,
+    //                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+    //             },
+    //             {
+    //                 /*** Characteristic: TX, notifies */
+    //                 .uuid = &gatt_svr_chr_tx.u,
+    //                 .val_handle = &ble_nus_tx_handle,
+    //                 .access_cb = gatt_svr_chr_access_sec_test,
+    //                 .flags = BLE_GATT_CHR_F_NOTIFY,
+    //             },
+    //             {
+    //                 0, /* No more characteristics in this service. */
+    //             }
+    //         },
+    //     },
 
-    rc = ble_gatts_count_cfg(gatt_svr_svcs);
-    if (rc != 0) {
-        return rc;
-    }
+    //     {
+    //         0, /* No more services. */
+    //     },
+    // };
 
-    rc = ble_gatts_add_svcs(gatt_svr_svcs);
-    if (rc != 0) {
-        return rc;
-    }
+    // rc = ble_gatts_count_cfg(gatt_svr_svcs);
+    // if (rc != 0) {
+    //     return rc;
+    // }
+
+    // rc = ble_gatts_add_svcs(gatt_svr_svcs);
+    // if (rc != 0) {
+    //     return rc;
+    // }
+    return true;
 }
 
 
@@ -407,6 +561,49 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
     return 0;
 }
 
+#undef MODLOG_DFLT
+#define MODLOG_DFLT(level, ...) printf(__VA_ARGS__)
+
+static void
+gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
+{
+    char buf[BLE_UUID_STR_LEN];
+
+    if (characteristic_handles == mp_const_none) {
+        characteristic_handles = mp_obj_new_dict(1);
+    }
+    
+    switch (ctxt->op) {
+    case BLE_GATT_REGISTER_OP_SVC:
+        MODLOG_DFLT(DEBUG, "registered service %s with handle=%d\n",
+                    ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
+                    ctxt->svc.handle);
+        mp_obj_dict_store(
+            characteristic_handles, 
+            MP_OBJ_NEW_SMALL_INT(ctxt->svc.handle), 
+            
+        );
+        break;
+
+    case BLE_GATT_REGISTER_OP_CHR:
+        MODLOG_DFLT(DEBUG, "registering characteristic %s with "
+                           "def_handle=%d val_handle=%d\n",
+                    ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
+                    ctxt->chr.def_handle,
+                    ctxt->chr.val_handle);
+        break;
+
+    case BLE_GATT_REGISTER_OP_DSC:
+        MODLOG_DFLT(DEBUG, "registering descriptor %s with handle=%d\n",
+                    ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
+                    ctxt->dsc.handle);
+        break;
+
+    default:
+        assert(0);
+        break;
+    }
+}
 
 
 // ORIGINAL

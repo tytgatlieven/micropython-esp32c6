@@ -84,6 +84,22 @@ STATIC mp_obj_t ble_service_make_new(const mp_obj_type_t *type, size_t n_args, s
     return MP_OBJ_FROM_PTR(s);
 }
 
+/// \method __setattr__(name, val)
+/// Add attribute to class instance. 
+/// If it's a Characteristic, track it explicitely
+///
+STATIC mp_obj_t mp_builtin_setattr(mp_obj_t base, mp_obj_t attr, mp_obj_t value) {
+    mp_store_attr(base, mp_obj_str_get_qstr(attr), value);
+    
+    if (mp_obj_is_subclass(MP_OBJ_FROM_PTR(mp_obj_get_type(value)), MP_OBJ_FROM_PTR(&ble_characteristic_type))) {
+        ble_service_obj_t *self = MP_OBJ_TO_PTR(base);
+        mp_obj_list_append(self->char_list, value);
+    }
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_3(ble_service_setattr_obj, service_setattr);
+
+
 /// \method addCharacteristic(Characteristic)
 /// Add Characteristic to the Service.
 ///
@@ -158,6 +174,7 @@ STATIC mp_obj_t service_uuid(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_service_get_uuid_obj, service_uuid);
 
 STATIC const mp_rom_map_elem_t ble_service_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___setattr__),        MP_ROM_PTR(&ble_service_setattr_obj) },
     { MP_ROM_QSTR(MP_QSTR_getCharacteristic),  MP_ROM_PTR(&ble_service_get_char_obj) },
     { MP_ROM_QSTR(MP_QSTR_addCharacteristic),  MP_ROM_PTR(&ble_service_add_char_obj) },
     { MP_ROM_QSTR(MP_QSTR_getCharacteristics), MP_ROM_PTR(&ble_service_get_chars_obj) },

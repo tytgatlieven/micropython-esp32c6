@@ -101,6 +101,8 @@ bool ble_drv_service_add(ble_service_obj_t * p_service_obj);
 
 bool ble_drv_characteristic_add(ble_characteristic_obj_t * p_char_obj);
 
+void ble_drv_finalise(ble_peripheral_obj_t * p_peripheral_obj);
+
 bool ble_drv_advertise_data(ble_advertise_data_t * p_adv_params);
 
 void ble_drv_advertise_stop(void);

@@ -109,27 +109,29 @@ typedef enum {
 
 typedef struct _ble_uuid_obj_t {
     mp_obj_base_t       base;
-    ble_uuid_type_t type;
-    uint8_t             value[2];
+    ble_uuid_type_t     type;
+    uint8_t             value[16];
     uint8_t             uuid_vs_idx;
+
 } ble_uuid_obj_t;
 
 typedef struct _ble_peripheral_obj_t {
     mp_obj_base_t       base;
-    ble_role_type_t role;
+    ble_role_type_t     role;
     volatile uint16_t   conn_handle;
     mp_obj_t            delegate;
     mp_obj_t            notif_handler;
     mp_obj_t            conn_handler;
     mp_obj_t            service_list;
+    bool                initialised;
 } ble_peripheral_obj_t;
 
 typedef struct _ble_service_obj_t {
     mp_obj_base_t              base;
     uint16_t                   handle;
     uint8_t                    type;
-    ble_uuid_obj_t       * p_uuid;
-    ble_peripheral_obj_t * p_periph;
+    ble_uuid_obj_t           * p_uuid;
+    ble_peripheral_obj_t     * p_periph;
     mp_obj_t                   char_list;
     uint16_t                   start_handle;
     uint16_t                   end_handle;
@@ -138,25 +140,25 @@ typedef struct _ble_service_obj_t {
 typedef struct _ble_characteristic_obj_t {
     mp_obj_base_t           base;
     uint16_t                handle;
-    ble_uuid_obj_t    * p_uuid;
+    ble_uuid_obj_t        * p_uuid;
     uint16_t                service_handle;
     uint16_t                user_desc_handle;
     uint16_t                cccd_handle;
     uint16_t                sccd_handle;
     uint8_t                 props;
     uint8_t                 attrs;
-    ble_service_obj_t * p_service;
+    ble_service_obj_t     * p_service;
     mp_obj_t                value_data;
 } ble_characteristic_obj_t;
 
 typedef struct _ble_descriptor_obj_t {
     mp_obj_base_t           base;
     uint16_t                handle;
-    ble_uuid_obj_t    * p_uuid;
+    ble_uuid_obj_t        * p_uuid;
 } ble_descriptor_obj_t;
 
 typedef struct _ble_delegate_obj_t {
-    mp_obj_base_t        base;
+    mp_obj_base_t            base;
 } ble_delegate_obj_t;
 
 typedef struct _ble_advertise_data_t {

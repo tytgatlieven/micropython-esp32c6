@@ -165,6 +165,18 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(ble_peripheral_set_conn_handler_obj, peripheral
 
 #if MICROPY_PY_BLE_PERIPHERAL
 
+/// \method finalise()
+/// Finish initialising the peripheral for use.
+///
+STATIC mp_obj_t peripheral_finalise(mp_obj_t self_in) {
+    ble_peripheral_obj_t *self = MP_OBJ_TO_PTR(self_in);    
+    ble_drv_finalise(self);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_peripheral_finalise_obj, peripheral_finalise);
+
+
+
 /// \method advertise(device_name, [service=[service1, service2, ...]], [data=bytearray], [connectable=True])
 /// Start advertising. Connectable advertisment type by default.
 ///
@@ -228,6 +240,8 @@ STATIC mp_obj_t peripheral_advertise(mp_uint_t n_args, const mp_obj_t *pos_args,
         ble_drv_gap_event_handler_set(MP_OBJ_FROM_PTR(self), gap_event_handler);
         ble_drv_gatts_event_handler_set(MP_OBJ_FROM_PTR(self), gatts_event_handler);
     }
+
+    ble_drv_finalise(self);
 
     (void)ble_drv_advertise_data(&adv_data);
 
@@ -466,6 +480,7 @@ STATIC const mp_rom_map_elem_t ble_peripheral_locals_dict_table[] = {
 #endif // 0
 #endif // MICROPY_PY_BLE_CENTRAL
 #if MICROPY_PY_BLE_PERIPHERAL
+    { MP_ROM_QSTR(MP_QSTR_finalise),              MP_ROM_PTR(&ble_peripheral_finalise_obj) },
     { MP_ROM_QSTR(MP_QSTR_advertise),              MP_ROM_PTR(&ble_peripheral_advertise_obj) },
     { MP_ROM_QSTR(MP_QSTR_advertise_stop),         MP_ROM_PTR(&ble_peripheral_advertise_stop_obj) },
     { MP_ROM_QSTR(MP_QSTR_disconnect),             MP_ROM_PTR(&ble_peripheral_disconnect_obj) },
