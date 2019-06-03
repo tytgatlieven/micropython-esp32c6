@@ -39,6 +39,7 @@
 #include "transport/uart/ble_hci_uart.h"
 #include "nimble/host/src/ble_hs_hci_priv.h" // for ble_hs_hci_cmd_tx
 #include "host/ble_hs.h"
+// #include "host/ble_hs_uuid.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
 
@@ -83,11 +84,18 @@ void *realloc(void *ptr, size_t size) {
 static bool run_loop_up = false;
 static uint16_t nus_conn_handle;
 
+// Stores {nimble_attr_handle : ble_characteristic_obj_t }
+mp_obj_t char_map;
+// Handle to top level peripheral object
+static ble_peripheral_obj_t * p_peripheral;
+
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
+static void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg);
 
 extern void nimble_uart_process(void);
 extern void os_eventq_run_all(void);
 extern void os_callout_process(void);
+
 
 STATIC void nimble_poll(void) {
     if (!run_loop_up) {
@@ -108,53 +116,98 @@ void nimble_poll_wrapper(uint32_t ticks_ms) {
     }
 }
 
-static int
-gatt_svr_chr_access_gap(uint16_t conn_handle, uint16_t attr_handle, uint8_t op,
-                        union ble_gatt_access_ctxt *ctxt, void *arg)
-{
-    uint16_t uuid16;
-
-    uuid16 = ble_uuid_128_to_16(ctxt->chr_access.chr->uuid128);
-    assert(uuid16 != 0);
-
-    switch (uuid16) {
-    case BLE_GAP_CHR_UUID16_DEVICE_NAME:
-        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
-        ctxt->chr_access.data = (void *)bleprph_device_name;
-        ctxt->chr_access.len = strlen(bleprph_device_name);
+STATIC ble_uuid_any_t uuid_obj_to_nimble_uuid(ble_uuid_obj_t *u) {
+    ble_uuid_any_t nimble_uuid;// = BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E);
+    switch(u->type) {
+        case BLE_UUID_16_BIT:
+        nimble_uuid.u16.u.type = BLE_UUID_TYPE_16;
+        nimble_uuid.u16.value = (u->value[1] << 8) | u->value[0];
         break;
 
-    case BLE_GAP_CHR_UUID16_APPEARANCE:
-        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
-        ctxt->chr_access.data = (void *)&bleprph_appearance;
-        ctxt->chr_access.len = sizeof bleprph_appearance;
+        case BLE_UUID_128_BIT:
+        nimble_uuid.u16.u.type = BLE_UUID_TYPE_128;
+        uint8_t *value = nimble_uuid.u128.value;
+        memcpy(value, u->value, 16);
         break;
 
-    case BLE_GAP_CHR_UUID16_PERIPH_PRIV_FLAG:
-        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
-        ctxt->chr_access.data = (void *)&bleprph_privacy_flag;
-        ctxt->chr_access.len = sizeof bleprph_privacy_flag;
-        break;
-
-    case BLE_GAP_CHR_UUID16_RECONNECT_ADDR:
-        assert(op == BLE_GATT_ACCESS_OP_WRITE_CHR);
-        if (ctxt->chr_access.len != sizeof bleprph_reconnect_addr) {
-            return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
-        }
-        memcpy(bleprph_reconnect_addr, ctxt->chr_access.data,
-               sizeof bleprph_reconnect_addr);
-        break;
-
-    case BLE_GAP_CHR_UUID16_PERIPH_PREF_CONN_PARAMS:
-        assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
-        ctxt->chr_access.data = (void *)&bleprph_pref_conn_params;
-        ctxt->chr_access.len = sizeof bleprph_pref_conn_params;
-        break;
-
-    default:
-        assert(0);
-        break;
+        // default:
+        // TODO: print error?
     }
+    return nimble_uuid;
+}
+
+STATIC ble_uuid_obj_t nimble_uuid_to_uuid_obj(ble_uuid_any_t *u) {
+    ble_uuid_obj_t uuid;
+
+    switch(u->u.type) {
+        case BLE_UUID_TYPE_16:
+        uuid.type = BLE_UUID_16_BIT;
+        uuid.value[0] = u->u16.value & 0xFF;
+        uuid.value[1] = (u->u16.value >> 8) & 0xFF;
+        break;
+
+        case BLE_UUID_TYPE_128:
+        uuid.type = BLE_UUID_128_BIT;
+        uint8_t *value = uuid.value;
+        memcpy(value, u->u128.value, 16);
+        break;
+
+        // default:
+        // TODO: print error?
+    }
+    return uuid;
+}
+
+STATIC int
+gatt_svr_chr_access_gap(uint16_t conn_handle, uint16_t attr_handle, uint8_t op,
+                        struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    // uint16_t uuid16;
+
+    // uuid16 = ble_uuid_u16(ctxt->chr->uuid);
+    // assert(uuid16 != 0);
+
+    ble_uuid_obj_t uuid = nimble_uuid_to_uuid_obj((ble_uuid_any_t *)ctxt->chr->uuid);
+    UNUSED(uuid);
+
+    // switch (uuid16) {
+    // case BLE_GAP_CHR_UUID16_DEVICE_NAME:
+    //     assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+    //     ctxt->chr_access.data = (void *)bleprph_device_name;
+    //     ctxt->chr_access.len = strlen(bleprph_device_name);
+    //     break;
+
+    // case BLE_GAP_CHR_UUID16_APPEARANCE:
+    //     assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+    //     ctxt->chr_access.data = (void *)&bleprph_appearance;
+    //     ctxt->chr_access.len = sizeof bleprph_appearance;
+    //     break;
+
+    // case BLE_GAP_CHR_UUID16_PERIPH_PRIV_FLAG:
+    //     assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+    //     ctxt->chr_access.data = (void *)&bleprph_privacy_flag;
+    //     ctxt->chr_access.len = sizeof bleprph_privacy_flag;
+    //     break;
+
+    // case BLE_GAP_CHR_UUID16_RECONNECT_ADDR:
+    //     assert(op == BLE_GATT_ACCESS_OP_WRITE_CHR);
+    //     if (ctxt->chr_access.len != sizeof bleprph_reconnect_addr) {
+    //         return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+    //     }
+    //     memcpy(bleprph_reconnect_addr, ctxt->chr_access.data,
+    //            sizeof bleprph_reconnect_addr);
+    //     break;
+
+    // case BLE_GAP_CHR_UUID16_PERIPH_PREF_CONN_PARAMS:
+    //     assert(op == BLE_GATT_ACCESS_OP_READ_CHR);
+    //     ctxt->chr_access.data = (void *)&bleprph_pref_conn_params;
+    //     ctxt->chr_access.len = sizeof bleprph_pref_conn_params;
+    //     break;
+
+    // default:
+    //     assert(0);
+    //     break;
+    // }
 
     return 0;
 }
@@ -284,49 +337,40 @@ void ble_drv_advertise_stop(void) {
     ble_gap_adv_stop();
 }
 
-STATIC ble_uuid_any_t uuid_obj_to_nimble_uuid(ble_uuid_obj_t *u) {
-    ble_uuid_any_t nimble_uuid;// = BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0, 0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E);
-    switch(u->ble_uuid_type_t) {
-        case BLE_UUID_16_BIT:
-        nimble_uuid.u16.u.type = BLE_UUID_TYPE_16;
-        nimble_uuid.u16.value = (u->value[1] << 8) | u->value[0];
-        break;
-
-        case BLE_UUID_128_BIT:
-        nimble_uuid.u16.u.type = BLE_UUID_TYPE_128;
-        memcpy(nimble_uuid.u16.value, u->value, 16);
-        break;
-
-        default:
-        // TODO: print error?
-    }
-    return nimble_uuid
-}
-
 void ble_drv_finalise(ble_peripheral_obj_t * p_peripheral_obj) {
     if (p_peripheral_obj->initialised) {
         return;
     }
+    p_peripheral = p_peripheral_obj;
+    char_map = mp_obj_new_dict(0);
+
+    // if (characteristic_handles == mp_const_none) {
+    //     characteristic_handles = mp_obj_new_dict(1);
+    // }
+
+    // mp_obj_dict_store(
+    //     characteristic_handles, 
+    //     MP_OBJ_NEW_SMALL_INT(ctxt->svc.handle), 
+        
+    // );
 
     // finalise all services
     mp_obj_t * services = NULL;
     mp_uint_t  num_services;
-    mp_obj_get_array(self->service_list, &num_services, &services);
+    mp_obj_get_array(p_peripheral_obj->service_list, &num_services, &services);
     for (uint16_t s = 0; s < num_services; s++) {
         ble_service_obj_t * p_service = (ble_service_obj_t *)services[s];
 
-        mp_obj_t * chars = NULL;
-        mp_uint_t  num_chars;
-        mp_obj_get_array(p_service->char_list, &num_chars, &chars);
 
-        ble_uuid_any_t svc_uuid = uuid_obj_to_nimble_uuid(p_service.p_uuid);
+        ble_uuid_any_t svc_uuid = uuid_obj_to_nimble_uuid(p_service->p_uuid);
 
         struct ble_gatt_svc_def service_def[] = {
             {
                 /*** Service: Security test. */
                 .type = BLE_GATT_SVC_TYPE_PRIMARY,
                 .uuid = &svc_uuid.u,
-                .characteristics = (struct ble_gatt_chr_def[num_chars]);
+                .characteristics = (struct ble_gatt_chr_def[num_chars])
+            },
             //     .characteristics = (struct ble_gatt_chr_def[]) {
             //         {
             //             /*** Characteristic: RX, writable */
@@ -349,7 +393,10 @@ void ble_drv_finalise(ble_peripheral_obj_t * p_peripheral_obj) {
             {0,},
         };
         
+        mp_uint_t num_chars;
         ble_uuid_any_t char_uuids[num_chars];
+        mp_obj_get_array(p_service->char_map, &num_chars, &chars);
+        mp_obj_t * chars = NULL;
         for (uint16_t c = 0; c < num_chars; c++) {
             ble_characteristic_obj_t * p_char = (ble_characteristic_obj_t *)chars[c];
 
@@ -569,20 +616,11 @@ gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
 {
     char buf[BLE_UUID_STR_LEN];
 
-    if (characteristic_handles == mp_const_none) {
-        characteristic_handles = mp_obj_new_dict(1);
-    }
-    
     switch (ctxt->op) {
     case BLE_GATT_REGISTER_OP_SVC:
         MODLOG_DFLT(DEBUG, "registered service %s with handle=%d\n",
                     ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
                     ctxt->svc.handle);
-        mp_obj_dict_store(
-            characteristic_handles, 
-            MP_OBJ_NEW_SMALL_INT(ctxt->svc.handle), 
-            
-        );
         break;
 
     case BLE_GATT_REGISTER_OP_CHR:
@@ -591,6 +629,25 @@ gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
                     ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
                     ctxt->chr.def_handle,
                     ctxt->chr.val_handle);
+
+        mp_obj_t * services = NULL;
+        mp_uint_t  num_services;
+        mp_obj_get_array(p_peripheral->service_list, &num_services, &services);
+        for (uint16_t s = 0; s < num_services; s++) {
+            ble_service_obj_t * p_service = (ble_service_obj_t *)services[s];
+            ble_uuid_any_t svc_uuid = uuid_obj_to_nimble_uuid(p_service->p_uuid);
+            if (0 == ble_uuid_cmp(svc_uuid, ctxt->chr.svc_def->uuid)) {
+                mp_obj_t char_obj = mp_obj_dict_get(
+                    p_service->char_map, 
+                    nimble_uuid_to_uuid_obj(ctxt->chr.chr_def->uuid)
+                );
+
+                mp_obj_dict_store(
+                    char_map, 
+                    MP_OBJ_NEW_SMALL_INT(ctxt->chr.def_handle),
+                    char_obj
+                );
+            }
         break;
 
     case BLE_GATT_REGISTER_OP_DSC:

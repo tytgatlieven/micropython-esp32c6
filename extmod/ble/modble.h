@@ -132,7 +132,7 @@ typedef struct _ble_service_obj_t {
     uint8_t                    type;
     ble_uuid_obj_t           * p_uuid;
     ble_peripheral_obj_t     * p_periph;
-    mp_obj_t                   char_list;
+    mp_obj_t                   char_map;
     uint16_t                   start_handle;
     uint16_t                   end_handle;
 } ble_service_obj_t;

@@ -79,7 +79,9 @@ STATIC mp_obj_t ble_service_make_new(const mp_obj_type_t *type, size_t n_args, s
 
     // clear reference to peripheral
     s->p_periph = NULL;
-    s->char_list = mp_obj_new_list(0, NULL);
+    s->char_map = mp_obj_new_dict(0);
+
+    
 
     return MP_OBJ_FROM_PTR(s);
 }
@@ -88,12 +90,13 @@ STATIC mp_obj_t ble_service_make_new(const mp_obj_type_t *type, size_t n_args, s
 /// Add attribute to class instance. 
 /// If it's a Characteristic, track it explicitely
 ///
-STATIC mp_obj_t mp_builtin_setattr(mp_obj_t base, mp_obj_t attr, mp_obj_t value) {
+STATIC mp_obj_t service_setattr(mp_obj_t base, mp_obj_t attr, mp_obj_t value) {
     mp_store_attr(base, mp_obj_str_get_qstr(attr), value);
     
-    if (mp_obj_is_subclass(MP_OBJ_FROM_PTR(mp_obj_get_type(value)), MP_OBJ_FROM_PTR(&ble_characteristic_type))) {
+    if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(mp_obj_get_type(value)), MP_OBJ_FROM_PTR(&ble_characteristic_type))) {
         ble_service_obj_t *self = MP_OBJ_TO_PTR(base);
-        mp_obj_list_append(self->char_list, value);
+        ble_characteristic_obj_t *p_char = MP_OBJ_TO_PTR(value);
+        mp_obj_dict_store(self->char_map, MP_OBJ_FROM_PTR(p_char->p_uuid), value);
     }
     return mp_const_none;
 }
@@ -115,7 +118,7 @@ STATIC mp_obj_t service_add_characteristic(mp_obj_t self_in, mp_obj_t characteri
         p_char->p_service = self;
     }
 
-    mp_obj_list_append(self->char_list, characteristic);
+    mp_obj_dict_store(self->char_map, MP_OBJ_FROM_PTR(p_char->p_uuid), characteristic);
 
     // return mp_obj_new_bool(retval);
     return mp_const_none;
@@ -128,7 +131,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(ble_service_add_char_obj, service_add_character
 STATIC mp_obj_t service_get_chars(mp_obj_t self_in) {
     ble_service_obj_t * self = MP_OBJ_TO_PTR(self_in);
 
-    return self->char_list;
+    return self->char_map;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(ble_service_get_chars_obj, service_get_chars);
 
@@ -144,23 +147,26 @@ STATIC mp_obj_t service_get_characteristic(mp_obj_t self_in, mp_obj_t uuid) {
         mp_raise_ValueError("Invalid UUID parameter");
     }
 
-    mp_obj_t * chars     = NULL;
-    mp_uint_t  num_chars = 0;
-    mp_obj_get_array(self->char_list, &num_chars, &chars);
+    return mp_obj_dict_get(self->char_map, uuid);
 
-    for (uint8_t i = 0; i < num_chars; i++) {
-        ble_characteristic_obj_t * p_char = (ble_characteristic_obj_t *)chars[i];
+    // mp_obj_t * chars     = NULL;
+    // mp_uint_t  num_chars = 0;
 
-        bool type_match = p_char->p_uuid->type == p_uuid->type;
-        bool uuid_match = ((uint16_t)(*(uint16_t *)&p_char->p_uuid->value[0]) ==
-                           (uint16_t)(*(uint16_t *)&p_uuid->value[0]));
+    // mp_obj_get_array(dict_values(self->char_map), &num_chars, &chars);
 
-        if (type_match && uuid_match) {
-            return MP_OBJ_FROM_PTR(p_char);
-        }
-    }
+    // for (uint8_t i = 0; i < num_chars; i++) {
+    //     ble_characteristic_obj_t * p_char = (ble_characteristic_obj_t *)chars[i];
 
-    return mp_const_none;
+    //     bool type_match = p_char->p_uuid->type == p_uuid->type;
+    //     bool uuid_match = ((uint16_t)(*(uint16_t *)&p_char->p_uuid->value[0]) ==
+    //                        (uint16_t)(*(uint16_t *)&p_uuid->value[0]));
+
+    //     if (type_match && uuid_match) {
+    //         return MP_OBJ_FROM_PTR(p_char);
+    //     }
+    // }
+
+    // return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(ble_service_get_char_obj, service_get_characteristic);
 
