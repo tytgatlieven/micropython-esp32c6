@@ -27,6 +27,7 @@
 #include <assert.h>
 
 #include "py/runtime.h"
+#include "py/gc.h"
 #include "py/mphal.h"
 #include "systick.h"
 #include "pendsv.h"
@@ -55,6 +56,45 @@ int sprintf(char *str, const char *fmt, ...) {
     va_end(ap);
     return ret;
 }
+
+// Non-const versions of the nimble structs so we can dynamically create them
+struct ble_gatt_chr_def_nc {
+    /**
+     * Pointer to characteristic UUID; use BLE_UUIDxx_DECLARE macros to declare
+     * proper UUID; NULL if there are no more characteristics in the service.
+     */
+    ble_uuid_t *uuid;
+
+    /**
+     * Callback that gets executed when this characteristic is read or
+     * written.
+     */
+    ble_gatt_access_fn *access_cb;
+
+    /** Optional argument for callback. */
+    void *arg;
+
+    /**
+     * Array of this characteristic's descriptors.  NULL if no descriptors.
+     * Do not include CCCD; it gets added automatically if this
+     * characteristic's notify or indicate flag is set.
+     */
+    struct ble_gatt_dsc_def *descriptors;
+
+    /** Specifies the set of permitted operations for this characteristic. */
+    ble_gatt_chr_flags flags;
+
+    /** Specifies minimum required key size to access this characteristic. */
+    uint8_t min_key_size;
+
+    /**
+     * At registration time, this is filled in with the characteristic's value
+     * attribute handle.
+     */
+    uint16_t *val_handle;
+};
+
+
 
 // TODO deal with root pointers
 
@@ -159,7 +199,7 @@ STATIC ble_uuid_obj_t nimble_uuid_to_uuid_obj(ble_uuid_any_t *u) {
 }
 
 STATIC int
-gatt_svr_chr_access_gap(uint16_t conn_handle, uint16_t attr_handle, uint8_t op,
+gatt_svr_chr_access_gap(uint16_t conn_handle, uint16_t attr_handle,
                         struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
     // uint16_t uuid16;
@@ -361,68 +401,85 @@ void ble_drv_finalise(ble_peripheral_obj_t * p_peripheral_obj) {
     for (uint16_t s = 0; s < num_services; s++) {
         ble_service_obj_t * p_service = (ble_service_obj_t *)services[s];
 
-
         ble_uuid_any_t svc_uuid = uuid_obj_to_nimble_uuid(p_service->p_uuid);
 
-        struct ble_gatt_svc_def service_def[] = {
-            {
-                /*** Service: Security test. */
-                .type = BLE_GATT_SVC_TYPE_PRIMARY,
-                .uuid = &svc_uuid.u,
-                .characteristics = (struct ble_gatt_chr_def[num_chars])
-            },
-            //     .characteristics = (struct ble_gatt_chr_def[]) {
-            //         {
-            //             /*** Characteristic: RX, writable */
-            //             .uuid = &gatt_svr_chr_rx.u,
-            //             .access_cb = gatt_svr_chr_access_sec_test,
-            //             .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
-            //         },
-            //         {
-            //             /*** Characteristic: TX, notifies */
-            //             .uuid = &gatt_svr_chr_tx.u,
-            //             .val_handle = &ble_nus_tx_handle,
-            //             .access_cb = gatt_svr_chr_access_sec_test,
-            //             .flags = BLE_GATT_CHR_F_NOTIFY,
-            //         },
-            //         {
-            //             0, /* No more characteristics in this service. */
-            //         }
-            //     },
-            // },
-            {0,},
-        };
-        
-        mp_uint_t num_chars;
-        ble_uuid_any_t char_uuids[num_chars];
-        mp_obj_get_array(p_service->char_map, &num_chars, &chars);
         mp_obj_t * chars = NULL;
+        mp_uint_t num_chars = 0;
+        mp_obj_get_array(p_service->char_map, &num_chars, &chars);
+
+        struct ble_gatt_svc_def *service_def = gc_alloc((2 * sizeof(struct ble_gatt_svc_def)) + 
+                                                          (num_chars * sizeof(struct ble_gatt_chr_def)), 
+                                                           false);
+        service_def[0].type = BLE_GATT_SVC_TYPE_PRIMARY;
+        service_def[0].uuid = &svc_uuid.u;
+        // service_def[0]
+
+        // struct ble_gatt_svc_def service_def[] = {
+        //     {
+        //         /*** Service: Security test. */
+        //         .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        //         .uuid = &svc_uuid.u,
+        //         .characteristics = struct ble_gatt_chr_def[num_chars]
+        //     },
+        //     //     .characteristics = (struct ble_gatt_chr_def[]) {
+        //     //         {
+        //     //             /*** Characteristic: RX, writable */
+        //     //             .uuid = &gatt_svr_chr_rx.u,
+        //     //             .access_cb = gatt_svr_chr_access_sec_test,
+        //     //             .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+        //     //         },
+        //     //         {
+        //     //             /*** Characteristic: TX, notifies */
+        //     //             .uuid = &gatt_svr_chr_tx.u,
+        //     //             .val_handle = &ble_nus_tx_handle,
+        //     //             .access_cb = gatt_svr_chr_access_sec_test,
+        //     //             .flags = BLE_GATT_CHR_F_NOTIFY,
+        //     //         },
+        //     //         {
+        //     //             0, /* No more characteristics in this service. */
+        //     //         }
+        //     //     },
+        //     // },
+        //     {0,},
+        // };
+        
+        ble_uuid_any_t *char_uuids = gc_alloc((num_chars * sizeof(ble_uuid_any_t)), false);
+        
         for (uint16_t c = 0; c < num_chars; c++) {
             ble_characteristic_obj_t * p_char = (ble_characteristic_obj_t *)chars[c];
 
-            uint32_t flags = 0
-            flags += (p_char->props & BLE_PROP_READ)?BLE_GATT_CHR_F_READ:0;
-            flags += (p_char->props & BLE_PROP_WRITE)?BLE_GATT_CHR_F_WRITE:0;
-            flags += (p_char->props & BLE_PROP_NOTIFY)?BLE_GATT_CHR_F_NOTIFY:0;
+            uint32_t flags = 0;
+            flags += (p_char->props & BLE_PROP_READ) ? BLE_GATT_CHR_F_READ : 0;
+            flags += (p_char->props & BLE_PROP_WRITE) ? BLE_GATT_CHR_F_WRITE : 0;
+            flags += (p_char->props & BLE_PROP_NOTIFY) ? BLE_GATT_CHR_F_NOTIFY : 0;
             // TODO convert more flags
 
+            struct ble_gatt_chr_def_nc *p_buf_char = (void *)&(service_def[0].characteristics[c]);
+            
             char_uuids[c] = uuid_obj_to_nimble_uuid(p_char->p_uuid);
-            service_def[0].characteristics[c].uuid = &char_uuids[c].u,
-            service_def[0].characteristics[c].access_cb = gatt_svr_chr_access_gap,
-            service_def[0].characteristics[c].flags = flags,
+            p_buf_char->uuid = &(char_uuids[c].u);
+            p_buf_char->access_cb = gatt_svr_chr_access_gap;
+            p_buf_char->flags = flags;
         }
 
 
-        rc = ble_gatts_count_cfg(service_def);
+        int rc = ble_gatts_count_cfg(service_def);
         if (rc != 0) {
-            return rc;
+            gc_free(char_uuids);
+            gc_free(service_def);
+            // TODO raise
+            return;// rc;
         }
 
         rc = ble_gatts_add_svcs(service_def);
         if (rc != 0) {
-            return rc;
+            gc_free(char_uuids);
+            gc_free(service_def);
+            // TODO raise
+            return;// rc;
         }
-
+        gc_free(char_uuids);
+        gc_free(service_def);
     }
 
 }
@@ -636,10 +693,10 @@ gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
         for (uint16_t s = 0; s < num_services; s++) {
             ble_service_obj_t * p_service = (ble_service_obj_t *)services[s];
             ble_uuid_any_t svc_uuid = uuid_obj_to_nimble_uuid(p_service->p_uuid);
-            if (0 == ble_uuid_cmp(svc_uuid, ctxt->chr.svc_def->uuid)) {
+            if (0 == ble_uuid_cmp((ble_uuid_t *)&svc_uuid, ctxt->chr.svc_def->uuid)) {
                 mp_obj_t char_obj = mp_obj_dict_get(
                     p_service->char_map, 
-                    nimble_uuid_to_uuid_obj(ctxt->chr.chr_def->uuid)
+                    (mp_obj_base_t)nimble_uuid_to_uuid_obj((ble_uuid_any_t *)ctxt->chr.chr_def->uuid)
                 );
 
                 mp_obj_dict_store(
