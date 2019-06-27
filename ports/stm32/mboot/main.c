@@ -1526,6 +1526,7 @@ enter_bootloader:
     uint32_t ss = systick_ms;
     int ss2 = -1;
     #endif
+    bool has_connected = false;
     for (;;) {
         #if USE_USB_POLLING
         #if MBOOT_USB_AUTODETECT_PORT || MICROPY_HW_USB_MAIN_DEV == USB_PHY_FS_ID
@@ -1559,6 +1560,14 @@ enter_bootloader:
         led_state(LED0, 0);
         mp_hal_delay_ms(950);
         #endif
+        
+        if (pyb_usbdd.hUSBDDevice.dev_state == USBD_STATE_CONFIGURED) {
+            has_connected = true;
+        }
+        if (has_connected && pyb_usbdd.hUSBDDevice.dev_state == USBD_STATE_SUSPENDED) {
+            mp_hal_delay_ms(50);
+            do_reset();
+        }
     }
 }
 
