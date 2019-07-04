@@ -438,6 +438,10 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_USBDEV:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 OBJ += $(BUILD)/pins_$(BOARD).o
 
+ifeq ($(MICROPY_BLUETOOTH_NIMBLE),1)
+include nimble/nimble.mk
+endif
+
 # This file contains performance critical functions so turn up the optimisation
 # level.  It doesn't add much to the code size and improves performance a bit.
 # Don't use -O3 with this file because gcc tries to optimise memset in terms of itself.
