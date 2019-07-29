@@ -242,7 +242,7 @@ extern const struct _mp_obj_module_t mp_module_onewire;
 #define NETWORK_BUILTIN_MODULE
 #endif
 
-#if MICROPY_PY_NETWORK
+#if MICROPY_PY_BLUETOOTH
 #define BLUETOOTH_BUILTIN_MODULE              { MP_ROM_QSTR(MP_QSTR_bluetooth), MP_ROM_PTR(&mp_module_bluetooth) },
 #else
 #define BLUETOOTH_BUILTIN_MODULE
