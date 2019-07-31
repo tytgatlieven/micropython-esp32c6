@@ -492,6 +492,10 @@ void stm32_main(uint32_t reset_mode) {
     #endif
     systick_enable_dispatch(SYSTICK_DISPATCH_LWIP, mod_network_lwip_poll_wrapper);
     #endif
+    #if MICROPY_BLUETOOTH_NIMBLE
+    extern void mod_bluetooth_nimble_poll_wrapper(uint32_t ticks_ms);
+    systick_enable_dispatch(SYSTICK_DISPATCH_NIMBLE, mod_bluetooth_nimble_poll_wrapper);
+    #endif
 
     #if MICROPY_PY_NETWORK_CYW43
     {

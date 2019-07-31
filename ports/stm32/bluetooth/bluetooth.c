@@ -32,6 +32,8 @@
 
 #include "extmod/modbluetooth.h"
 
+#include "systick.h"
+#include "pendsv.h"
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "nimble/ble.h"
@@ -95,8 +97,10 @@ extern void nimble_uart_process(void);
 extern void os_eventq_run_all(void);
 extern void os_callout_process(void);
 
-// hook for network poller to run this periodically
-void nimble_poll(void) {
+// Hook for pendsv poller to run this periodically every 128ms
+#define NIMBLE_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & 0x7f) == 0)
+
+STATIC void pyb_nimble_poll(void) {
     if (ble_state == BLE_STATE_OFF) {
         return;
     }
@@ -104,6 +108,12 @@ void nimble_poll(void) {
     nimble_uart_process();
     os_callout_process();
     os_eventq_run_all();
+}
+
+void mod_bluetooth_nimble_poll_wrapper(uint32_t ticks_ms) {
+    if (NIMBLE_TICK(ticks_ms)) {
+        pendsv_schedule_dispatch(PENDSV_DISPATCH_NIMBLE, pyb_nimble_poll);
+    }
 }
 
 /******************************************************************************/
