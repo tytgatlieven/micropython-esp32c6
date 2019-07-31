@@ -30,13 +30,13 @@
 #include "uart.h"
 #include "nimble/ble.h"
 #include "hal/hal_uart.h"
-#include "cywbt.h"
+#include "bt_uart.h"
 
 #if MICROPY_BLUETOOTH_NIMBLE
 
 /******************************************************************************/
-// Bindings CYWBT to Nimble
-
+// Bindings: BT Uart to Nimble
+ 
 static hal_uart_tx_cb_t hal_uart_tx_cb;
 static void *hal_uart_tx_arg;
 static hal_uart_rx_cb_t hal_uart_rx_cb;
@@ -53,8 +53,9 @@ int hal_uart_init_cbs(uint32_t port, hal_uart_tx_cb_t tx_cb, void *tx_arg, hal_u
 }
 
 int hal_uart_config(uint32_t port, uint32_t baud, uint32_t bits, uint32_t stop, uint32_t parity, uint32_t flow) {
-    cywbt_init();
-    cywbt_activate();
+    
+    bt_uart_init();
+    bt_uart_activate();
     return 0; // success
 }
 
@@ -65,7 +66,7 @@ void hal_uart_start_tx(uint32_t port) {
         if (data == -1) {
             break;
         }
-        cywbt_hci_cmd_buf[len++] = data;
+        bt_uart_hci_cmd_buf[len++] = data;
     }
 
     #if 0
@@ -83,7 +84,7 @@ void hal_uart_start_tx(uint32_t port) {
         mp_hal_delay_ms(5); // can't go lower than this
     }
 
-    uart_tx_strn(&cywbt_hci_uart_obj, (void*)cywbt_hci_cmd_buf, len);
+    uart_tx_strn(&bt_hci_uart_obj, (void*)bt_uart_hci_cmd_buf, len);
 }
 
 int hal_uart_close(uint32_t port) {
@@ -91,7 +92,9 @@ int hal_uart_close(uint32_t port) {
 }
 
 void nimble_uart_process(void) {
+    #ifdef pyb_pin_BT_HOST_WAKE
     int host_wake = mp_hal_pin_read(pyb_pin_BT_HOST_WAKE);
+    #endif
     /*
     // this is just for info/tracing purposes
     static int last_host_wake = 0;
@@ -100,17 +103,19 @@ void nimble_uart_process(void) {
         last_host_wake = host_wake;
     }
     */
-    while (uart_rx_any(&cywbt_hci_uart_obj)) {
-        uint8_t data = uart_rx_char(&cywbt_hci_uart_obj);
+    while (uart_rx_any(&bt_hci_uart_obj)) {
+        uint8_t data = uart_rx_char(&bt_hci_uart_obj);
         //printf("UART RX: %02x\n", data);
         hal_uart_rx_cb(hal_uart_rx_arg, data);
     }
+    #if defined(pyb_pin_BT_HOST_WAKE) && defined(pyb_pin_BT_DEV_WAKE)
     if (host_wake == 1 && mp_hal_pin_read(pyb_pin_BT_DEV_WAKE) == 0) {
         if (mp_hal_ticks_ms() - bt_sleep_ticks > 500) {
             //printf("BT SLEEP\n");
             mp_hal_pin_high(pyb_pin_BT_DEV_WAKE); // let sleep
         }
     }
+    #endif
 }
 
 #endif // MICROPY_BLUETOOTH_NIMBLE

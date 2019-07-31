@@ -217,7 +217,9 @@ int mp_bt_enable(void) {
 
 void mp_bt_disable(void) {
     ble_state = BLE_STATE_OFF;
+    #ifdef pyb_pin_BT_REG_ON
     mp_hal_pin_low(pyb_pin_BT_REG_ON);
+    #endif
 }
 
 bool mp_bt_is_enabled(void) {
@@ -259,12 +261,17 @@ int mp_bt_advertise_start(mp_bt_adv_type_t type, uint16_t interval, const uint8_
     };
 
     ret = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
-    if (ret != 0) {
-        printf("ble_gap_adv_start: fail with %u\n", ret);
-        return ble_hs_err_to_errno(ret);
-    }
-
-    return 0;
+    if (ret == 0) return 0;
+    ret = ble_gap_adv_start(BLE_OWN_ADDR_RPA_PUBLIC_DEFAULT, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
+    if (ret == 0) return 0;
+    ret = ble_gap_adv_start(BLE_OWN_ADDR_RPA_RANDOM_DEFAULT, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
+    if (ret == 0) return 0;
+    ret = ble_gap_adv_start(BLE_OWN_ADDR_RANDOM, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
+    if (ret == 0) return 0;
+    
+    printf("ble_gap_adv_start: fail with %u\n", ret);
+    return ble_hs_err_to_errno(ret);
+    
 }
 
 void mp_bt_advertise_stop(void) {
