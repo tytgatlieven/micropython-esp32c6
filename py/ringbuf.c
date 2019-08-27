@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2016 Paul Sokolovsky
+ * Copyright (c) 2019 Jim Mussared
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,65 +23,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_PY_RINGBUF_H
-#define MICROPY_INCLUDED_PY_RINGBUF_H
+#include "ringbuf.h"
 
-#include <stddef.h>
-#include <stdint.h>
-
-typedef struct _ringbuf_t {
-    uint8_t *buf;
-    uint16_t size;
-    uint16_t iget;
-    uint16_t iput;
-} ringbuf_t;
-
-// Static initialization:
-// byte buf_array[N];
-// ringbuf_t buf = {buf_array, sizeof(buf_array)};
-
-// Dynamic initialization. This needs to become findable as a root pointer!
-#define ringbuf_alloc(r, sz) \
-{ \
-    (r)->buf = m_new(uint8_t, sz); \
-    (r)->size = sz; \
-    (r)->iget = (r)->iput = 0; \
-}
-
-static inline int ringbuf_get(ringbuf_t *r) {
+int ringbuf_get16(ringbuf_t *r) {
     if (r->iget == r->iput) {
         return -1;
     }
-    uint8_t v = r->buf[r->iget++];
-    if (r->iget >= r->size) {
+    uint32_t iget_a = r->iget + 1;
+    if (iget_a == r->size) {
+        iget_a = 0;
+    }
+    if (iget_a == r->iput) {
+        return -1;
+    }
+    uint16_t v = (r->buf[r->iget] << 8) | (r->buf[iget_a]);
+    r->iget = iget_a + 1;
+    if (r->iget == r->size) {
         r->iget = 0;
     }
     return v;
 }
 
-static inline int ringbuf_put(ringbuf_t *r, uint8_t v) {
-    uint32_t iput_new = r->iput + 1;
-    if (iput_new >= r->size) {
-        iput_new = 0;
+int ringbuf_put16(ringbuf_t *r, uint16_t v) {
+    uint32_t iput_a = r->iput + 1;
+    if (iput_a == r->size) {
+        iput_a = 0;
     }
-    if (iput_new == r->iget) {
+    if (iput_a == r->iget) {
         return -1;
     }
-    r->buf[r->iput] = v;
-    r->iput = iput_new;
+    uint32_t iput_b = iput_a + 1;
+    if (iput_b == r->size) {
+        iput_b = 0;
+    }
+    if (iput_b == r->iget) {
+        return -1;
+    }
+    r->buf[r->iput] = (v >> 8) & 0xff;
+    r->buf[iput_a] = v & 0xff;
+    r->iput = iput_b;
     return 0;
 }
-
-static inline size_t ringbuf_free(ringbuf_t *r) {
-    return (r->size + r->iget - r->iput - 1) % r->size;
-}
-
-static inline size_t ringbuf_avail(ringbuf_t *r) {
-    return (r->size + r->iput - r->iget) % r->size;
-}
-
-int ringbuf_get16(ringbuf_t *r);
-
-int ringbuf_put16(ringbuf_t *r, uint16_t v);
-
-#endif // MICROPY_INCLUDED_PY_RINGBUF_H
