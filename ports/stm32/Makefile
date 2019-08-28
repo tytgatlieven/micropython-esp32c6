@@ -216,6 +216,7 @@ endif
 
 EXTMOD_SRC_C = $(addprefix extmod/,\
 	modonewire.c \
+	modbluetooth_nimble.c \
         )
 
 DRIVERS_SRC_C = $(addprefix drivers/,\

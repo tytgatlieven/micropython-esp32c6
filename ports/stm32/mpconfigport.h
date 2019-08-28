@@ -297,6 +297,12 @@ extern const struct _mp_obj_module_t mp_module_onewire;
 #define MICROPY_PORT_ROOT_POINTER_MBEDTLS
 #endif
 
+#if MICROPY_BLUETOOTH_NIMBLE
+#define MICROPY_PORT_ROOT_POINTER_BLUETOOTH_NIMBLE void **bluetooth_nimble_memory;
+#else
+#define MICROPY_PORT_ROOT_POINTER_BLUETOOTH_NIMBLE
+#endif
+
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
     \
@@ -327,6 +333,7 @@ extern const struct _mp_obj_module_t mp_module_onewire;
     mp_obj_list_t mod_network_nic_list; \
     \
     MICROPY_PORT_ROOT_POINTER_MBEDTLS \
+    MICROPY_PORT_ROOT_POINTER_BLUETOOTH_NIMBLE \
 
 // type definitions for the specific machine
 
