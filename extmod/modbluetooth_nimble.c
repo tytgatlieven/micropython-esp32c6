@@ -337,7 +337,7 @@ int mp_bluetooth_advertise_start(bool connectable, uint16_t interval_ms, const u
 
     mp_bluetooth_advertise_stop();
 
-    if (adv_data != NULL) {
+    if ((adv_data != NULL) && (adv_data_len > 0)) {
         ret = ble_gap_adv_set_data(adv_data, adv_data_len);
         if (ret != 0) {
             //printf("ble_gap_adv_set_data: fail with %u\n", ret);
@@ -345,7 +345,7 @@ int mp_bluetooth_advertise_start(bool connectable, uint16_t interval_ms, const u
         }
     }
 
-    if (sr_data != NULL) {
+    if ((sr_data != NULL) && (sr_data_len > 0)) {
         ret = ble_gap_adv_rsp_set_data(sr_data, sr_data_len);
         if (ret != 0) {
             //printf("ble_gap_adv_rsp_set_data: fail with %u\n", ret);

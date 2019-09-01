@@ -293,15 +293,16 @@ STATIC mp_obj_t bluetooth_advertise(size_t n_args, const mp_obj_t *pos_args, mp_
 
     mp_int_t interval_ms = args[ARG_interval_ms].u_int;
 
-    // TODO: Should we allow no adv_data, and just use interval_ms == 0 as the stop condition?
-    if (interval_ms == 0 || args[ARG_adv_data].u_obj == mp_const_none) {
+    if (interval_ms == 0) {
         mp_bluetooth_advertise_stop();
     }
 
     bool connectable = mp_obj_is_true(args[ARG_connectable].u_obj);
 
     mp_buffer_info_t adv_bufinfo = {0};
-    mp_get_buffer_raise(args[ARG_adv_data].u_obj, &adv_bufinfo, MP_BUFFER_READ);
+    if (args[ARG_adv_data].u_obj != mp_const_none) {
+        mp_get_buffer_raise(args[ARG_adv_data].u_obj, &adv_bufinfo, MP_BUFFER_READ);
+    }
 
     mp_buffer_info_t resp_bufinfo = {0};
     if (args[ARG_resp_data].u_obj != mp_const_none) {
