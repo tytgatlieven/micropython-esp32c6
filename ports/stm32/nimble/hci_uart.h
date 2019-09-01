@@ -23,13 +23,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_STM32_CYWBT_H
-#define MICROPY_INCLUDED_STM32_CYWBT_H
+#ifndef MICROPY_INCLUDED_STM32_HCI_UART_H
+#define MICROPY_INCLUDED_STM32_HCI_UART_H
 
 extern uint8_t bt_hci_cmd_buf[4 + 256];
 extern pyb_uart_obj_t bt_hci_uart_obj;
 
-int cywbt_init(void);
-int cywbt_activate(void);
+int uart_init_baudrate(uint32_t baudrate);
 
-#endif // MICROPY_INCLUDED_STM32_CYWBT_H
+
+#endif // MICROPY_INCLUDED_STM32_HCI_UART_H

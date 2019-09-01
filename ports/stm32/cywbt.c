@@ -38,33 +38,9 @@ extern const char fw_4343WA1_7_45_98_50_start;
 #define CYWBT_FW_ADDR (&fw_4343WA1_7_45_98_50_start + 749 * 512 + 29 * 256)
 
 /******************************************************************************/
-// UART
-
-pyb_uart_obj_t cywbt_hci_uart_obj;
-static uint8_t hci_uart_rxbuf[512];
-
-static int uart_init_(void) {
-    cywbt_hci_uart_obj.base.type = &pyb_uart_type;
-    cywbt_hci_uart_obj.uart_id = 6;
-    cywbt_hci_uart_obj.is_static = true;
-    cywbt_hci_uart_obj.timeout = 2;
-    cywbt_hci_uart_obj.timeout_char = 2;
-    MP_STATE_PORT(pyb_uart_obj_all)[cywbt_hci_uart_obj.uart_id - 1] = &cywbt_hci_uart_obj;
-    uart_init(&cywbt_hci_uart_obj, 115200, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
-    uart_set_rxbuf(&cywbt_hci_uart_obj, sizeof(hci_uart_rxbuf), hci_uart_rxbuf);
-    return 0;
-}
-
-static int uart_set_baudrate(uint32_t baudrate) {
-    uart_init(&cywbt_hci_uart_obj, baudrate, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
-    uart_set_rxbuf(&cywbt_hci_uart_obj, sizeof(hci_uart_rxbuf), hci_uart_rxbuf);
-    return 0;
-}
-
-/******************************************************************************/
 // CYW BT HCI low-level driver
 
-uint8_t cywbt_hci_cmd_buf[4 + 256];
+// extern uint8_t bt_hci_cmd_buf[4 + 256];
 
 static void cywbt_wait_cts_low(void) {
     mp_hal_pin_config(pyb_pin_BT_CTS, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_UP, 0);
@@ -78,12 +54,12 @@ static void cywbt_wait_cts_low(void) {
 }
 
 static int cywbt_hci_cmd_raw(size_t len, uint8_t *buf) {
-    uart_tx_strn(&cywbt_hci_uart_obj, (void*)buf, len);
+    uart_tx_strn(&bt_hci_uart_obj, (void*)buf, len);
     for (int i = 0; i < 6; ++i) {
-        while (!uart_rx_any(&cywbt_hci_uart_obj)) {
+        while (!uart_rx_any(&bt_hci_uart_obj)) {
             MICROPY_EVENT_POLL_HOOK
         }
-        buf[i] = uart_rx_char(&cywbt_hci_uart_obj);
+        buf[i] = uart_rx_char(&bt_hci_uart_obj);
     }
 
     // expect a comand complete event (event 0x0e)
@@ -100,17 +76,17 @@ static int cywbt_hci_cmd_raw(size_t len, uint8_t *buf) {
 
     int sz = buf[2] - 3;
     for (int i = 0; i < sz; ++i) {
-        while (!uart_rx_any(&cywbt_hci_uart_obj)) {
+        while (!uart_rx_any(&bt_hci_uart_obj)) {
             MICROPY_EVENT_POLL_HOOK
         }
-        buf[i] = uart_rx_char(&cywbt_hci_uart_obj);
+        buf[i] = uart_rx_char(&bt_hci_uart_obj);
     }
 
     return 0;
 }
 
 static int cywbt_hci_cmd(int ogf, int ocf, size_t param_len, const uint8_t *param_buf) {
-    uint8_t *buf = cywbt_hci_cmd_buf;
+    uint8_t *buf = bt_hci_cmd_buf;
     buf[0] = 0x01;
     buf[1] = ocf;
     buf[2] = ogf << 2 | ocf >> 8;
@@ -147,7 +123,7 @@ static int cywbt_download_firmware(const uint8_t *firmware) {
     uint32_t t0 = mp_hal_ticks_ms();
     bool last_packet = false;
     while (!last_packet) {
-        uint8_t *buf = cywbt_hci_cmd_buf;
+        uint8_t *buf = bt_hci_cmd_buf;
         memcpy(buf + 1, firmware, 3);
         firmware += 3;
         last_packet = buf[1] == 0x4e;
@@ -177,9 +153,9 @@ static int cywbt_download_firmware(const uint8_t *firmware) {
     cywbt_wait_cts_low();
     mp_hal_pin_config(pyb_pin_WL_GPIO_1, MP_HAL_PIN_MODE_INPUT, MP_HAL_PIN_PULL_DOWN, 0); // Select chip antenna (could also select external)
 
-    uart_set_baudrate(115200);
+    uart_init_baudrate(115200);
     cywbt_set_baudrate(3000000);
-    uart_set_baudrate(3000000);
+    uart_init_baudrate(3000000);
 
     return 0;
 }
@@ -204,7 +180,7 @@ int cywbt_activate(void) {
     uint8_t buf[256];
 
     mp_hal_pin_low(pyb_pin_BT_REG_ON);
-    uart_set_baudrate(115200);
+    uart_init_baudrate(115200);
     mp_hal_delay_ms(100);
     mp_hal_pin_high(pyb_pin_BT_REG_ON);
     cywbt_wait_cts_low();
@@ -214,7 +190,7 @@ int cywbt_activate(void) {
 
     // Change baudrate
     cywbt_set_baudrate(3000000);
-    uart_set_baudrate(3000000);
+    uart_init_baudrate(3000000);
 
     cywbt_download_firmware((const uint8_t*)CYWBT_FW_ADDR);
 
@@ -233,9 +209,9 @@ int cywbt_activate(void) {
     cywbt_hci_cmd(0x3f, 0x0001, 6, buf);
 
     // Set local name
-    memset(buf, 0, 248);
-    memcpy(buf, "PYBD-BLE", 8);
-    cywbt_hci_cmd(0x03, 0x0013, 248, buf);
+    // memset(buf, 0, 248);
+    // memcpy(buf, "PYBD-BLE", 8);
+    // cywbt_hci_cmd(0x03, 0x0013, 248, buf);
 
     // Configure sleep mode
     cywbt_hci_cmd(0x3f, 0x27, 12, (const uint8_t*)"\x01\x02\x02\x00\x00\x00\x01\x00\x00\x00\x00\x00");

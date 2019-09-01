@@ -318,7 +318,9 @@ int mp_bluetooth_enable(void) {
 
 void mp_bluetooth_disable(void) {
     ble_state = BLE_STATE_OFF;
-    mp_hal_pin_low(pyb_pin_BT_REG_ON);
+    #ifdef pyb_pin_BT_REG_ON
+        mp_hal_pin_low(pyb_pin_BT_REG_ON);
+    #endif
 }
 
 bool mp_bluetooth_is_enabled(void) {

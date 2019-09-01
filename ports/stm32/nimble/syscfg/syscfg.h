@@ -1,6 +1,9 @@
 #ifndef INCLUDED_SYSCFG_H
 #define INCLUDED_SYSCFG_H
 
+#include "py/mphal.h"
+#include "uart.h"
+
 #define MYNEWT_VAL(x) MYNEWT_VAL_ ## x
 
 #define MYNEWT_VAL_LOG_LEVEL (255)
@@ -136,11 +139,11 @@
 #define MYNEWT_VAL_BLE_HCI_EVT_LO_BUF_COUNT (8)
 
 /* Overridden by targets/porting-nimble (defined by nimble/transport/uart) */
-#define MYNEWT_VAL_BLE_HCI_UART_BAUD (115200)
+#define MYNEWT_VAL_BLE_HCI_UART_BAUD (MICROPY_HW_BLE_UART_BAUD)
 #define MYNEWT_VAL_BLE_HCI_UART_DATA_BITS (8)
-#define MYNEWT_VAL_BLE_HCI_UART_FLOW_CTRL (0)
+#define MYNEWT_VAL_BLE_HCI_UART_FLOW_CTRL (1)
 #define MYNEWT_VAL_BLE_HCI_UART_PARITY (HAL_UART_PARITY_NONE)
-#define MYNEWT_VAL_BLE_HCI_UART_PORT (0)
+#define MYNEWT_VAL_BLE_HCI_UART_PORT (MICROPY_HW_BLE_UART_ID)
 #define MYNEWT_VAL_BLE_HCI_UART_STOP_BITS (1)
 
 #endif // INCLUDED_SYSCFG_H

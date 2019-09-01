@@ -34,8 +34,32 @@
 
 #if MICROPY_BLUETOOTH_NIMBLE
 
+
 /******************************************************************************/
-// Bindings CYWBT to Nimble
+// UART
+pyb_uart_obj_t bt_hci_uart_obj;
+static uint8_t hci_uart_rxbuf[512];
+
+int uart_init_baudrate(uint32_t baudrate) {
+    uart_init(&bt_hci_uart_obj, baudrate, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
+    uart_set_rxbuf(&bt_hci_uart_obj, sizeof(hci_uart_rxbuf), hci_uart_rxbuf);
+    return 0;
+}
+
+static int uart_init_0(int uart_id, int baud) {
+    bt_hci_uart_obj.base.type = &pyb_uart_type;
+    bt_hci_uart_obj.uart_id = uart_id;
+    bt_hci_uart_obj.is_static = true;
+    bt_hci_uart_obj.timeout = 2;
+    bt_hci_uart_obj.timeout_char = 2;
+    MP_STATE_PORT(pyb_uart_obj_all)[bt_hci_uart_obj.uart_id - 1] = &bt_hci_uart_obj;
+    return uart_init_baudrate(baud);
+    return 0;
+}
+
+/******************************************************************************/
+// Bindings Uart to Nimble
+uint8_t bt_hci_cmd_buf[4 + 256];
 
 static hal_uart_tx_cb_t hal_uart_tx_cb;
 static void *hal_uart_tx_arg;
@@ -53,8 +77,13 @@ int hal_uart_init_cbs(uint32_t port, hal_uart_tx_cb_t tx_cb, void *tx_arg, hal_u
 }
 
 int hal_uart_config(uint32_t port, uint32_t baud, uint32_t bits, uint32_t stop, uint32_t parity, uint32_t flow) {
-    cywbt_init();
-    cywbt_activate();
+    uart_init_0(port, baud);
+
+    #if MICROPY_PY_NETWORK_CYW43
+        cywbt_init();
+        cywbt_activate();
+    #endif
+
     return 0; // success
 }
 
@@ -65,7 +94,7 @@ void hal_uart_start_tx(uint32_t port) {
         if (data == -1) {
             break;
         }
-        cywbt_hci_cmd_buf[len++] = data;
+        bt_hci_cmd_buf[len++] = data;
     }
 
     #if 0
@@ -77,13 +106,16 @@ void hal_uart_start_tx(uint32_t port) {
     #endif
 
     bt_sleep_ticks = mp_hal_ticks_ms();
-    if (mp_hal_pin_read(pyb_pin_BT_DEV_WAKE) == 1) {
-        //printf("BT WAKE for TX\n");
-        mp_hal_pin_low(pyb_pin_BT_DEV_WAKE); // wake up
-        mp_hal_delay_ms(5); // can't go lower than this
-    }
 
-    uart_tx_strn(&cywbt_hci_uart_obj, (void*)cywbt_hci_cmd_buf, len);
+    #ifdef pyb_pin_BT_DEV_WAKE
+        if (mp_hal_pin_read(pyb_pin_BT_DEV_WAKE) == 1) {
+            //printf("BT WAKE for TX\n");
+            mp_hal_pin_low(pyb_pin_BT_DEV_WAKE); // wake up
+            mp_hal_delay_ms(5); // can't go lower than this
+        }
+    #endif
+
+    uart_tx_strn(&bt_hci_uart_obj, (void*)bt_hci_cmd_buf, len);
 }
 
 int hal_uart_close(uint32_t port) {
@@ -91,7 +123,10 @@ int hal_uart_close(uint32_t port) {
 }
 
 void nimble_uart_process(void) {
-    int host_wake = mp_hal_pin_read(pyb_pin_BT_HOST_WAKE);
+    int host_wake = 0;
+    #ifdef pyb_pin_BT_HOST_WAKE
+        host_wake = mp_hal_pin_read(pyb_pin_BT_HOST_WAKE);
+    #endif
     /*
     // this is just for info/tracing purposes
     static int last_host_wake = 0;
@@ -100,8 +135,8 @@ void nimble_uart_process(void) {
         last_host_wake = host_wake;
     }
     */
-    while (uart_rx_any(&cywbt_hci_uart_obj)) {
-        uint8_t data = uart_rx_char(&cywbt_hci_uart_obj);
+    while (uart_rx_any(&bt_hci_uart_obj)) {
+        uint8_t data = uart_rx_char(&bt_hci_uart_obj);
         //printf("UART RX: %02x\n", data);
         hal_uart_rx_cb(hal_uart_rx_arg, data);
     }
