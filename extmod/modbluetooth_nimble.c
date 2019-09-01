@@ -33,6 +33,10 @@
 
 #if MICROPY_PY_BLUETOOTH && MICROPY_BLUETOOTH_NIMBLE
 
+#ifndef MICROPY_PY_BLUETOOTH_DEFAULT_NAME
+#define MICROPY_PY_BLUETOOTH_DEFAULT_NAME "PYBD"
+#endif
+
 #include "extmod/modbluetooth.h"
 
 #include "host/ble_hs.h"
@@ -215,7 +219,7 @@ STATIC void reset_cb(int reason) {
 
 STATIC void sync_cb(void) {
     ble_hs_util_ensure_addr(0); // prefer public address
-    ble_svc_gap_device_name_set("PYBD");
+    ble_svc_gap_device_name_set(MICROPY_PY_BLUETOOTH_DEFAULT_NAME);
 
     ble_state = BLE_STATE_ACTIVE;
 }
