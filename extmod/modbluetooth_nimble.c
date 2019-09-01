@@ -218,7 +218,28 @@ STATIC void reset_cb(int reason) {
 }
 
 STATIC void sync_cb(void) {
-    ble_hs_util_ensure_addr(0); // prefer public address
+    int rc;
+    ble_addr_t addr;
+
+    rc = ble_hs_util_ensure_addr(0); // prefer public address
+    if (rc != 0) {
+        // https://mynewt.apache.org/latest/tutorials/ble/eddystone.html#configure-the-nimble-stack-with-an-address
+        #if MICROPY_PY_BLUETOOTH_RANDOM_ADDR    
+            rc = ble_hs_id_gen_rnd(1, &addr);
+            assert(rc == 0);
+            rc = ble_hs_id_set_rnd(addr.val);
+            assert(rc == 0);
+        #else
+            mp_hal_get_mac(MP_HAL_MAC_BDADDR, addr.val);
+            // ble_hs_id_set_pub(addr.val);
+            rc = ble_hs_id_set_rnd(addr.val);
+            assert(rc == 0);
+        #endif
+    
+        rc = ble_hs_util_ensure_addr(0); // prefer public address
+        assert(rc == 0);
+    }
+
     ble_svc_gap_device_name_set(MICROPY_PY_BLUETOOTH_DEFAULT_NAME);
 
     ble_state = BLE_STATE_ACTIVE;
@@ -345,12 +366,17 @@ int mp_bluetooth_advertise_start(bool connectable, uint16_t interval_ms, const u
     };
 
     ret = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
-    if (ret != 0) {
-        //printf("ble_gap_adv_start: fail with %u\n", ret);
-        return ble_hs_err_to_errno(ret);
-    }
+    if (ret == 0) return 0;
+    ret = ble_gap_adv_start(BLE_OWN_ADDR_RPA_PUBLIC_DEFAULT, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
+    if (ret == 0) return 0;
+    ret = ble_gap_adv_start(BLE_OWN_ADDR_RPA_RANDOM_DEFAULT, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
+    if (ret == 0) return 0;
+    ret = ble_gap_adv_start(BLE_OWN_ADDR_RANDOM, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
+    if (ret == 0) return 0;
+    
+    printf("ble_gap_adv_start: fail with %u\n", ret);
+    return ble_hs_err_to_errno(ret);
 
-    return 0;
 }
 
 void mp_bluetooth_advertise_stop(void) {
