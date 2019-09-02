@@ -319,19 +319,22 @@ STATIC mp_obj_t bluetooth_gatts_add_service(size_t n_args, const mp_obj_t *pos_a
     }
     mp_obj_bluetooth_uuid_t *service_uuid = MP_OBJ_TO_PTR(args[ARG_uuid].u_obj);
 
-    // TODO: Maybe make this work with any subscriptable type (not just tuple).
-    if (!mp_obj_is_type(args[ARG_characteristics].u_obj, &mp_type_tuple)) {
-        mp_raise_ValueError("invalid characteristics tuple");
+    mp_obj_t len_in = mp_obj_len_maybe(args[ARG_characteristics].u_obj);
+    if (len_in == MP_OBJ_NULL) {
+        mp_raise_ValueError("invalid characteristics definitions");
     }
-    mp_obj_tuple_t *characteristics = MP_OBJ_TO_PTR(args[ARG_characteristics].u_obj);
+    size_t len = MP_OBJ_SMALL_INT_VALUE(len_in);
+    mp_obj_iter_buf_t iter_buf;
+    mp_obj_t iterable = mp_getiter(args[ARG_characteristics].u_obj, &iter_buf);
+    mp_obj_t characteristic_obj;
 
-    mp_obj_bluetooth_uuid_t **characteristic_uuids = m_new(mp_obj_bluetooth_uuid_t*, characteristics->len);
-    uint8_t *characteristic_flags = m_new(uint8_t, characteristics->len);
-    uint16_t *value_handles = m_new(uint16_t, characteristics->len);
+    mp_obj_bluetooth_uuid_t **characteristic_uuids = m_new(mp_obj_bluetooth_uuid_t*, len);
+    uint8_t *characteristic_flags = m_new(uint8_t, len);
+    uint16_t *value_handles = m_new(uint16_t, len);
 
     // Extract out characteristic uuids & flags.
-    for (int i = 0; i < characteristics->len; i++) {
-        mp_obj_t characteristic_obj = characteristics->items[i];
+    int i = 0;
+    while ((characteristic_obj = mp_iternext(iterable)) != MP_OBJ_STOP_ITERATION) {
         mp_obj_tuple_t *characteristic = MP_OBJ_TO_PTR(characteristic_obj);
 
         if (!mp_obj_is_type(characteristic_obj, &mp_type_tuple) || characteristic->len != 2) {
@@ -344,15 +347,16 @@ STATIC mp_obj_t bluetooth_gatts_add_service(size_t n_args, const mp_obj_t *pos_a
         characteristic_uuids[i] = MP_OBJ_TO_PTR(uuid_obj);
         characteristic_flags[i] = mp_obj_get_int(characteristic->items[1]);
         value_handles[i] = 0xffff;
+        i += 1;
     }
 
     // Add service.
-    int err = mp_bluetooth_add_service(service_uuid, characteristic_uuids, characteristic_flags, value_handles, characteristics->len);
+    int err = mp_bluetooth_add_service(service_uuid, characteristic_uuids, characteristic_flags, value_handles, len);
     bluetooth_handle_errno(err);
 
     // Return tuple of value handles.
-    mp_obj_tuple_t *result = mp_obj_new_tuple(characteristics->len, NULL);
-    for (int i = 0; i < characteristics->len; i++) {
+    mp_obj_tuple_t *result = mp_obj_new_tuple(len, NULL);
+    for (int i = 0; i < len; i++) {
         result->items[i] = MP_OBJ_NEW_SMALL_INT(value_handles[i]);
     }
     return MP_OBJ_FROM_PTR(result);
