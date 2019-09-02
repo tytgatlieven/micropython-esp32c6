@@ -405,6 +405,22 @@ static int characteristic_access_cb(uint16_t conn_handle, uint16_t value_handle,
                 return BLE_ATT_ERR_UNLIKELY;
             }
             entry = MP_OBJ_TO_PTR(elem->value);
+
+            // Call bluetooth.irq if defined
+            mp_obj_bluetooth_t *o = MP_OBJ_TO_PTR(MP_STATE_VM(bluetooth));
+            mp_obj_t handler = o->irq_handler;
+            int event = MP_BLUETOOTH_IRQ_CHARACTERISTIC_READ_REQUEST;
+            if (handler != mp_const_none) {
+                mp_obj_tuple_t *data_tuple = mp_obj_new_tuple(1, NULL);
+                data_tuple->items[0] = MP_OBJ_NEW_SMALL_INT(value_handle);
+                mp_obj_t ret = mp_call_function_2(handler, MP_OBJ_NEW_SMALL_INT(event), MP_OBJ_FROM_PTR(data_tuple));
+                // If returns explicitely false, deny the read request
+                // An unhandled event of None is allowed though.
+                if ((ret != mp_const_none) && (!mp_obj_is_true(ret))) {
+                    return BLE_ATT_ERR_UNLIKELY;
+                }
+            }
+
             os_mbuf_append(ctxt->om, entry->data, entry->data_len);
 
             return 0;

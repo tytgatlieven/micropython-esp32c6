@@ -32,6 +32,7 @@
 
 #include "py/obj.h"
 #include "py/objlist.h"
+#include "py/ringbuf.h"
 
 // Port specific configuration.
 #ifndef MICROPY_PY_BLUETOOTH_RINGBUF_SIZE
@@ -78,17 +79,18 @@
 #define MP_BLUETOOTH_IRQ_CENTRAL_CONNECT                  (1 << 1)
 #define MP_BLUETOOTH_IRQ_CENTRAL_DISCONNECT               (1 << 2)
 #define MP_BLUETOOTH_IRQ_CHARACTERISTIC_WRITE             (1 << 3)
-#define MP_BLUETOOTH_IRQ_SCAN_RESULT                      (1 << 4)
-#define MP_BLUETOOTH_IRQ_SCAN_COMPLETE                    (1 << 5)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_CONNECT               (1 << 6)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_DISCONNECT            (1 << 7)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_SERVICE_RESULT        (1 << 8)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_CHARACTERISTIC_RESULT (1 << 9)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_DESCRIPTOR_RESULT     (1 << 10)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_READ_RESULT           (1 << 11)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_WRITE_STATUS          (1 << 12)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_NOTIFY                (1 << 13)
-#define MP_BLUETOOTH_IRQ_PERIPHERAL_INDICATE              (1 << 14)
+#define MP_BLUETOOTH_IRQ_CHARACTERISTIC_READ_REQUEST      (1 << 4)
+#define MP_BLUETOOTH_IRQ_SCAN_RESULT                      (1 << 5)
+#define MP_BLUETOOTH_IRQ_SCAN_COMPLETE                    (1 << 6)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_CONNECT               (1 << 7)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_DISCONNECT            (1 << 8)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_SERVICE_RESULT        (1 << 9)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_CHARACTERISTIC_RESULT (1 << 10)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_DESCRIPTOR_RESULT     (1 << 11)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_READ_RESULT           (1 << 12)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_WRITE_STATUS          (1 << 13)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_NOTIFY                (1 << 14)
+#define MP_BLUETOOTH_IRQ_PERIPHERAL_INDICATE              (1 << 15)
 #define MP_BLUETOOTH_IRQ_ALL                              (0xffff)
 
 /*
@@ -112,6 +114,14 @@ IRQ_PERIPHERAL_NOTIFY                = const(1 << 13)
 IRQ_PERIPHERAL_INDICATE              = const(1 << 14)
 IRQ_ALL                              = const(0xffff)
 */
+
+// Main bluetooth module type
+typedef struct {
+    mp_obj_base_t base;
+    mp_obj_t irq_handler;
+    uint16_t irq_trigger;
+    ringbuf_t ringbuf;
+} mp_obj_bluetooth_t;
 
 // Common UUID type.
 // Ports are expected to map this to their own internal UUID types.

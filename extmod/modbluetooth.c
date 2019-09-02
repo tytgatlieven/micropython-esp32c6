@@ -31,7 +31,6 @@
 #include "py/objstr.h"
 #include "py/objarray.h"
 #include "py/qstr.h"
-#include "py/ringbuf.h"
 #include "py/runtime.h"
 #include "extmod/modbluetooth.h"
 #include <string.h>
@@ -46,13 +45,6 @@
 
 STATIC const mp_obj_type_t bluetooth_type;
 STATIC const mp_obj_type_t uuid_type;
-
-typedef struct {
-    mp_obj_base_t base;
-    mp_obj_t irq_handler;
-    uint16_t irq_trigger;
-    ringbuf_t ringbuf;
-} mp_obj_bluetooth_t;
 
 // TODO: this seems like it could be generic?
 STATIC mp_obj_t bluetooth_handle_errno(int err) {
