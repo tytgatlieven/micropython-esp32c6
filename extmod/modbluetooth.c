@@ -54,6 +54,35 @@ STATIC mp_obj_t bluetooth_handle_errno(int err) {
     return mp_const_none;
 }
 
+
+// Allocate and store as root pointer.
+// TODO: This is duplicated from mbedtls.
+//       Perhaps make this a generic feature?
+void *m_malloc_bluetooth(size_t size) {
+    void **ptr = m_malloc0(size + 2 * sizeof(uintptr_t));
+    if (MP_STATE_PORT(bluetooth_nimble_memory) != NULL) {
+        MP_STATE_PORT(bluetooth_nimble_memory)[0] = ptr;
+    }
+    ptr[0] = NULL;
+    ptr[1] = MP_STATE_PORT(bluetooth_nimble_memory);
+    MP_STATE_PORT(bluetooth_nimble_memory) = ptr;
+    return &ptr[2];
+}
+
+
+// void m_free_bluetooth(void *ptr_in) {
+//     void **ptr = &((void**)ptr_in)[-2];
+//     if (ptr[1] != NULL) {
+//         ((void**)ptr[1])[0] = ptr[0];
+//     }
+//     if (ptr[0] != NULL) {
+//         ((void**)ptr[0])[1] = ptr[1];
+//     } else {
+//         MP_STATE_PORT(bluetooth_nimble_memory) = ptr[1];
+//     }
+//     m_free(ptr);
+// }
+
 // ----------------------------------------------------------------------------
 // UUID object
 // ----------------------------------------------------------------------------
@@ -220,6 +249,7 @@ STATIC const mp_obj_type_t uuid_type = {
 // ----------------------------------------------------------------------------
 
 STATIC mp_obj_t bluetooth_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+    mp_obj_t result;
     mp_uint_t atomic_state = MICROPY_BEGIN_ATOMIC_SECTION();
     if (MP_STATE_VM(bluetooth) == MP_OBJ_NULL) {
         mp_obj_bluetooth_t *o = m_new_obj(mp_obj_bluetooth_t);
@@ -227,10 +257,18 @@ STATIC mp_obj_t bluetooth_make_new(const mp_obj_type_t *type, size_t n_args, siz
         o->irq_handler = mp_const_none;
         o->irq_trigger = 0;
         ringbuf_alloc(&o->ringbuf, MICROPY_PY_BLUETOOTH_RINGBUF_SIZE);
+        mp_obj_dict_init(&o->char_handles, 1);
         MP_STATE_VM(bluetooth) = MP_OBJ_FROM_PTR(o);
+        result = MP_STATE_VM(bluetooth);
+        MICROPY_END_ATOMIC_SECTION(atomic_state);
+
+        mp_bluetooth_init();
+        return result;
     }
-    mp_obj_t result = MP_STATE_VM(bluetooth);
+
+    result = MP_STATE_VM(bluetooth);
     MICROPY_END_ATOMIC_SECTION(atomic_state);
+
     return result;
 }
 
@@ -263,6 +301,12 @@ STATIC mp_obj_t bluetooth_config(mp_obj_t self_in, mp_obj_t param) {
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(bluetooth_config_obj, bluetooth_config);
+
+STATIC mp_obj_t bluetooth_handles(mp_obj_t self_in) {
+    mp_obj_bluetooth_t *self = MP_OBJ_TO_PTR(self_in);
+    return MP_OBJ_FROM_PTR(&self->char_handles);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bluetooth_handles_obj, bluetooth_handles);
 
 // TODO: consider making trigger optional if handler=None
 STATIC mp_obj_t bluetooth_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -353,11 +397,21 @@ STATIC mp_obj_t bluetooth_gatts_add_service(size_t n_args, const mp_obj_t *pos_a
     uint8_t *characteristic_flags = m_new(uint8_t, len);
     uint16_t *value_handles = m_new(uint16_t, len);
 
+    // Keep track of characteristics for each service in handles_db
+    // Along with the memory buffer used to hold the handle we get back from the stack
+    mp_obj_bluetooth_t *self = MP_OBJ_TO_PTR(pos_args[0]);
+    mp_map_t * handles_db = mp_obj_dict_get_map(&self->char_handles);
+    mp_map_elem_t *elem = mp_map_lookup(handles_db, args[ARG_uuid].u_obj, MP_MAP_LOOKUP_ADD_IF_NOT_FOUND);
+    mp_obj_tuple_t *char_details = mp_obj_new_tuple(2, NULL);
+    mp_obj_tuple_t *char_uuids_obj = mp_obj_new_tuple(len, NULL);
+    char_details->items[0] = char_uuids_obj;
+    char_details->items[1] = mp_obj_new_memoryview('H', len, value_handles);
+    elem->value = char_details;
+
     // Extract out characteristic uuids & flags.
     int i = 0;
     while ((characteristic_obj = mp_iternext(iterable)) != MP_OBJ_STOP_ITERATION) {
         mp_obj_tuple_t *characteristic = MP_OBJ_TO_PTR(characteristic_obj);
-
         if (!mp_obj_is_type(characteristic_obj, &mp_type_tuple) || characteristic->len != 2) {
             mp_raise_ValueError("invalid characteristic tuple");
         }
@@ -365,6 +419,7 @@ STATIC mp_obj_t bluetooth_gatts_add_service(size_t n_args, const mp_obj_t *pos_a
         if (!mp_obj_is_type(uuid_obj, &uuid_type)) {
             mp_raise_ValueError("invalid characteristic uuid");
         }
+        char_uuids_obj->items[i] = uuid_obj;
         characteristic_uuids[i] = MP_OBJ_TO_PTR(uuid_obj);
         characteristic_flags[i] = mp_obj_get_int(characteristic->items[1]);
         value_handles[i] = 0xffff;
@@ -375,12 +430,7 @@ STATIC mp_obj_t bluetooth_gatts_add_service(size_t n_args, const mp_obj_t *pos_a
     int err = mp_bluetooth_add_service(service_uuid, characteristic_uuids, characteristic_flags, value_handles, len);
     bluetooth_handle_errno(err);
 
-    // Return tuple of value handles.
-    mp_obj_tuple_t *result = mp_obj_new_tuple(len, NULL);
-    for (int i = 0; i < len; i++) {
-        result->items[i] = MP_OBJ_NEW_SMALL_INT(value_handles[i]);
-    }
-    return MP_OBJ_FROM_PTR(result);
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bluetooth_gatts_add_service_obj, 1, bluetooth_gatts_add_service);
 
@@ -528,6 +578,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(bluetooth_gattc_write_obj, 4, 4, blue
 STATIC const mp_rom_map_elem_t bluetooth_locals_dict_table[] = {
     // General
     { MP_ROM_QSTR(MP_QSTR_active), MP_ROM_PTR(&bluetooth_active_obj) },
+    { MP_ROM_QSTR(MP_QSTR_handles), MP_ROM_PTR(&bluetooth_handles_obj) },
     { MP_ROM_QSTR(MP_QSTR_config), MP_ROM_PTR(&bluetooth_config_obj) },
     { MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&bluetooth_irq_obj) },
     // GAP

@@ -87,34 +87,6 @@ STATIC int ble_hs_err_to_errno(int err) {
     }
 }
 
-// Allocate and store as root pointer.
-// TODO: This is duplicated from mbedtls.
-//       Perhaps make this a generic feature?
-void *m_malloc_bluetooth(size_t size) {
-    void **ptr = m_malloc0(size + 2 * sizeof(uintptr_t));
-    if (MP_STATE_PORT(bluetooth_nimble_memory) != NULL) {
-        MP_STATE_PORT(bluetooth_nimble_memory)[0] = ptr;
-    }
-    ptr[0] = NULL;
-    ptr[1] = MP_STATE_PORT(bluetooth_nimble_memory);
-    MP_STATE_PORT(bluetooth_nimble_memory) = ptr;
-    return &ptr[2];
-}
-
-#define m_new_bluetooth(type, num) ((type*)m_malloc_bluetooth(sizeof(type) * (num)))
-
-// void m_free_bluetooth(void *ptr_in) {
-//     void **ptr = &((void**)ptr_in)[-2];
-//     if (ptr[1] != NULL) {
-//         ((void**)ptr[1])[0] = ptr[0];
-//     }
-//     if (ptr[0] != NULL) {
-//         ((void**)ptr[0])[1] = ptr[1];
-//     } else {
-//         MP_STATE_PORT(bluetooth_nimble_memory) = ptr[1];
-//     }
-//     m_free(ptr);
-// }
 
 STATIC ble_uuid_t* create_nimble_uuid(const mp_obj_bluetooth_uuid_t *uuid) {
     if (uuid->type == MP_BLUETOOTH_UUID_TYPE_16) {
@@ -224,7 +196,7 @@ STATIC void sync_cb(void) {
     rc = ble_hs_util_ensure_addr(0); // prefer public address
     if (rc != 0) {
         // https://mynewt.apache.org/latest/tutorials/ble/eddystone.html#configure-the-nimble-stack-with-an-address
-        #if MICROPY_PY_BLUETOOTH_RANDOM_ADDR    
+        #if MICROPY_PY_BLUETOOTH_RANDOM_ADDR
             rc = ble_hs_id_gen_rnd(1, &addr);
             assert(rc == 0);
             rc = ble_hs_id_set_rnd(addr.val);
@@ -235,7 +207,7 @@ STATIC void sync_cb(void) {
             rc = ble_hs_id_set_rnd(addr.val);
             assert(rc == 0);
         #endif
-    
+
         rc = ble_hs_util_ensure_addr(0); // prefer public address
         assert(rc == 0);
     }
@@ -258,6 +230,8 @@ STATIC void gatts_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg) {
 
         case BLE_GATT_REGISTER_OP_CHR:
             printf("gatts_register_cb: chr uuid=%p def_handle=%d val_handle=%d\n", &ctxt->chr.chr_def->uuid, ctxt->chr.def_handle, ctxt->chr.val_handle);
+            mp_map_elem_t *elem = mp_map_lookup(gatts_db, MP_OBJ_NEW_SMALL_INT(ctxt->chr.val_handle), MP_MAP_LOOKUP_ADD_IF_NOT_FOUND);
+            elem->value = MP_OBJ_FROM_PTR(m_new0(gatts_db_entry_t, 1));
             break;
 
         case BLE_GATT_REGISTER_OP_DSC:
@@ -297,13 +271,7 @@ STATIC int gap_event_cb(struct ble_gap_event *event, void *arg) {
     return 0;
 }
 
-int mp_bluetooth_enable(void) {
-    if (ble_state != BLE_STATE_OFF) {
-        return 0;
-    }
-
-    ble_state = BLE_STATE_STARTING;
-
+int mp_bluetooth_init(void) {
     ble_hs_cfg.reset_cb = reset_cb;
     ble_hs_cfg.sync_cb = sync_cb;
     ble_hs_cfg.gatts_register_cb = gatts_register_cb;
@@ -311,6 +279,20 @@ int mp_bluetooth_enable(void) {
 
     ble_hci_uart_init();
     nimble_port_init();
+
+    // Register the default gap service
+    ble_svc_gap_init();
+
+    return 0;
+}
+
+int mp_bluetooth_enable(void) {
+    if (ble_state != BLE_STATE_OFF) {
+        return 0;
+    }
+
+    ble_state = BLE_STATE_STARTING;
+
     ble_hs_sched_start();
 
     // Wait for sync callback
@@ -484,12 +466,6 @@ int mp_bluetooth_add_service(mp_obj_bluetooth_uuid_t *service_uuid, mp_obj_bluet
 
     int ret;
 
-    ret = ble_gatts_reset();
-    if (ret != 0) {
-        //printf("ble_gatts_reset: fail with %d\n", ret);
-        return ble_hs_err_to_errno(ret);
-    }
-
     ret = ble_gatts_count_cfg(service);
     if (ret != 0) {
         //printf("ble_gatts_count_cfg: fail with %d\n", ret);
@@ -500,17 +476,6 @@ int mp_bluetooth_add_service(mp_obj_bluetooth_uuid_t *service_uuid, mp_obj_bluet
     if (ret != 0) {
         //printf("ble_gatts_add_svcs: fail with %d\n", ret);
         return ble_hs_err_to_errno(ret);
-    }
-
-    ret = ble_gatts_start();
-    if (ret != 0) {
-        //printf("ble_gatts_start: fail with %d\n", ret);
-        return ble_hs_err_to_errno(ret);
-    }
-
-    for (size_t i = 0; i < characteristic_len; ++i) {
-        mp_map_elem_t *elem = mp_map_lookup(gatts_db, MP_OBJ_NEW_SMALL_INT(value_handles[i]), MP_MAP_LOOKUP_ADD_IF_NOT_FOUND);
-        elem->value = MP_OBJ_FROM_PTR(m_new0(gatts_db_entry_t, 1));
     }
 
     return 0;

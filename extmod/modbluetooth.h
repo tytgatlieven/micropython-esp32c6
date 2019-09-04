@@ -121,6 +121,7 @@ typedef struct {
     mp_obj_t irq_handler;
     uint16_t irq_trigger;
     ringbuf_t ringbuf;
+    mp_obj_dict_t char_handles;
 } mp_obj_bluetooth_t;
 
 // Common UUID type.
@@ -135,6 +136,11 @@ typedef struct {
     } uuid;
 } mp_obj_bluetooth_uuid_t;
 
+
+// Memory allocation for bluetooth
+void *m_malloc_bluetooth(size_t size);
+#define m_new_bluetooth(type, num) ((type*)m_malloc_bluetooth(sizeof(type) * (num)))
+
 //////////////////////////////////////////////////////////////
 // API implemented by ports (i.e. called from modbluetooth.c):
 
@@ -143,6 +149,9 @@ typedef struct {
 // So these global methods should be replaced with a struct of function pointers (like the machine.I2C implementations).
 
 // Any method returning an int returns errno on failure, otherwise zero.
+
+// Performs any initial setup for stack.
+int mp_bluetooth_init(void);
 
 // Enables the Bluetooth stack.
 int mp_bluetooth_enable(void);
