@@ -28,6 +28,7 @@
 #include "py/mphal.h"
 #include "pin_static_af.h"
 #include "uart.h"
+#include "pendsv.h"
 #include "nimble/ble.h"
 #include "hal/hal_uart.h"
 #include "cywbt.h"
@@ -39,6 +40,14 @@
 // UART
 pyb_uart_obj_t bt_hci_uart_obj;
 static uint8_t hci_uart_rxbuf[512];
+
+extern void nimble_poll(void);
+
+mp_obj_t mp_uart_interrupt(mp_obj_t self_in) {
+    pendsv_schedule_dispatch(PENDSV_DISPATCH_NIMBLE, nimble_poll);
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(mp_uart_interrupt_obj, mp_uart_interrupt);
 
 int uart_init_baudrate(uint32_t baudrate) {
     uart_init(&bt_hci_uart_obj, baudrate, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
@@ -53,7 +62,17 @@ static int uart_init_0(int uart_id, int baud) {
     bt_hci_uart_obj.timeout = 2;
     bt_hci_uart_obj.timeout_char = 2;
     MP_STATE_PORT(pyb_uart_obj_all)[bt_hci_uart_obj.uart_id - 1] = &bt_hci_uart_obj;
-    return uart_init_baudrate(baud);
+    uart_init_baudrate(baud);
+
+    // Interrupt on RX chunk received (idle)
+    // Trigger nimble poll when this happens
+    mp_obj_t uart_irq_fn = mp_load_attr(&bt_hci_uart_obj, MP_QSTR_irq);
+    mp_obj_t uargs[] = {
+        MP_OBJ_FROM_PTR(&mp_uart_interrupt_obj),
+        MP_OBJ_NEW_SMALL_INT(UART_FLAG_IDLE),
+        mp_const_true,
+    };
+    mp_call_function_n_kw(uart_irq_fn, 3, 0, uargs);
     return 0;
 }
 

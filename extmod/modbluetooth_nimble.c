@@ -194,7 +194,7 @@ extern void os_callout_process(void);
 // Hook for pendsv poller to run this periodically every 128ms
 #define NIMBLE_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & 0x7f) == 0)
 
-STATIC void nimble_poll(void) {
+void nimble_poll(void) {
     if (ble_state == BLE_STATE_OFF) {
         return;
     }
