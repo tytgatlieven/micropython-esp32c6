@@ -114,6 +114,26 @@ STATIC mp_obj_t uuid_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     return self;
 }
 
+STATIC mp_obj_t uuid_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
+    mp_obj_bluetooth_uuid_t *self = MP_OBJ_TO_PTR(self_in);
+    switch (op) {
+        case MP_UNARY_OP_HASH: {
+            if (self->type == MP_BLUETOOTH_UUID_TYPE_16) {
+                return mp_unary_op(MP_UNARY_OP_HASH, MP_OBJ_NEW_SMALL_INT(self->uuid._16));
+
+            } else if (self->type == MP_BLUETOOTH_UUID_TYPE_32) {
+                return mp_unary_op(MP_UNARY_OP_HASH, MP_OBJ_NEW_SMALL_INT(self->uuid._32));
+
+            } else if (self->type == MP_BLUETOOTH_UUID_TYPE_128) {
+                return MP_OBJ_NEW_SMALL_INT(qstr_compute_hash(self->uuid._128, sizeof(self->uuid._128)));
+            }
+            return MP_OBJ_NULL;
+        }
+        default: return MP_OBJ_NULL; // op not supported
+    }
+}
+
+
 STATIC void uuid_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     mp_obj_bluetooth_uuid_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -190,6 +210,7 @@ STATIC const mp_obj_type_t uuid_type = {
     { &mp_type_type },
     .name = MP_QSTR_UUID,
     .make_new = uuid_make_new,
+    .unary_op = uuid_unary_op,
     .locals_dict = (void*)&uuid_locals_dict,
     .print = uuid_print,
 };
