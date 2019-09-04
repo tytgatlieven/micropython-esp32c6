@@ -321,7 +321,19 @@ int mp_bluetooth_enable(void) {
     return 0;
 }
 
+/**
+ * Called when the host stop procedure has completed.
+ */
+static void
+ble_hs_shutdown_stop_cb(int status, void *arg)
+{
+    ble_state = BLE_STATE_OFF;
+}
+static struct ble_hs_stop_listener ble_hs_shutdown_stop_listener;
+
 void mp_bluetooth_disable(void) {
+    ble_hs_stop(&ble_hs_shutdown_stop_listener, ble_hs_shutdown_stop_cb,
+                     NULL);
     ble_state = BLE_STATE_OFF;
     #ifdef pyb_pin_BT_REG_ON
         mp_hal_pin_low(pyb_pin_BT_REG_ON);
@@ -380,7 +392,7 @@ int mp_bluetooth_advertise_start(bool connectable, uint16_t interval_ms, const u
     if (ret == 0) return 0;
     ret = ble_gap_adv_start(BLE_OWN_ADDR_RANDOM, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
     if (ret == 0) return 0;
-    
+
     printf("ble_gap_adv_start: fail with %u\n", ret);
     return ble_hs_err_to_errno(ret);
 
