@@ -1341,6 +1341,18 @@ static void pyb_usbdd_stop(pyb_usbdd_obj_t *self) {
     }
 }
 
+#if MBOOT_REBOOT_ON_DISCONNECT
+static tin pyb_usbdd_connected(pyb_usbdd_obj_t *self) {
+    USBD_HandleTypeDef *pdev = &self->hUSBDDevice;
+    PCD_HandleTypeDef *pcd_handle = (PCD_HandleTypeDef *)pdev->pData;
+    if (pcd_handle->Instance->GOTGCTL & USB_OTG_GOTGCTL_BSVLD) {
+        return 1;
+    }
+    return 0;
+}
+#endif
+
+
 static int pyb_usbdd_shutdown(void) {
     pyb_usbdd_stop(&pyb_usbdd);
     return 0;
@@ -1526,7 +1538,9 @@ enter_bootloader:
     uint32_t ss = systick_ms;
     int ss2 = -1;
     #endif
+    #if MBOOT_REBOOT_ON_DISCONNECT
     bool has_connected = false;
+    #endif
     for (;;) {
         #if USE_USB_POLLING
         #if MBOOT_USB_AUTODETECT_PORT || MICROPY_HW_USB_MAIN_DEV == USB_PHY_FS_ID
@@ -1560,14 +1574,15 @@ enter_bootloader:
         led_state(LED0, 0);
         mp_hal_delay_ms(950);
         #endif
-        
-        if (pyb_usbdd.hUSBDDevice.dev_state == USBD_STATE_CONFIGURED) {
+
+        #if MBOOT_REBOOT_ON_DISCONNECT
+        if (pyb_usbdd_connected(&pyb_usbdd)) {
             has_connected = true;
         }
-        if (has_connected && pyb_usbdd.hUSBDDevice.dev_state == USBD_STATE_SUSPENDED) {
-            mp_hal_delay_ms(50);
+        if (has_connected && !pyb_usbdd_connected(&pyb_usbdd)) {
             do_reset();
         }
+        #endif
     }
 }
 
