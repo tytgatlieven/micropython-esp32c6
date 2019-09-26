@@ -1342,10 +1342,16 @@ static void pyb_usbdd_stop(pyb_usbdd_obj_t *self) {
 }
 
 #if MBOOT_REBOOT_ON_DISCONNECT
-static tin pyb_usbdd_connected(pyb_usbdd_obj_t *self) {
+#ifdef USB_OTG_GOTGCTL_BSVLD
+#define GOTGCTL_BSVLD USB_OTG_GOTGCTL_BSVLD
+#else
+#define GOTGCTL_BSVLD USB_OTG_GOTGCTL_BSESVLD
+#endif
+
+static int pyb_usbdd_connected(pyb_usbdd_obj_t *self) {
     USBD_HandleTypeDef *pdev = &self->hUSBDDevice;
     PCD_HandleTypeDef *pcd_handle = (PCD_HandleTypeDef *)pdev->pData;
-    if (pcd_handle->Instance->GOTGCTL & USB_OTG_GOTGCTL_BSVLD) {
+    if (pcd_handle->Instance->GOTGCTL & GOTGCTL_BSVLD) {
         return 1;
     }
     return 0;
