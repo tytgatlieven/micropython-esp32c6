@@ -36,6 +36,7 @@
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs.h"
 #include "extmod/vfs_fat.h"
+#include "extmod/vfs_littlefs.h"
 #include "extmod/machine_spiflash.h"
 
 #if MICROPY_PY_LWIP
@@ -612,8 +613,9 @@ soft_reset:
             MP_OBJ_FROM_PTR(MICROPY_VFS_ROOT_FS_BDEV)
         );
         // nlr_pop();
+        mounted_flash = true;
     // } else {
-    //     mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
+        // mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
     // }
     
     #endif

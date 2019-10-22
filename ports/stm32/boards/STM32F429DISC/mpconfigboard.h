@@ -7,6 +7,8 @@
 #define MICROPY_HW_ENABLE_RTC       (1)
 #define MICROPY_HW_ENABLE_USB       (1)
 
+#define MICROPY_VFS_ROOT_FS_FORMAT &mp_type_vfs_littlefs2
+
 // HSE is 8MHz
 #define MICROPY_HW_CLK_PLLM (8)
 #define MICROPY_HW_CLK_PLLN (336)
