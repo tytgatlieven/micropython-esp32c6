@@ -245,13 +245,18 @@ STATIC mp_obj_t pyb_flash_make_new(const mp_obj_type_t *type, size_t n_args, siz
     return MP_OBJ_FROM_PTR(&pyb_flash_obj);
 }
 
-STATIC mp_obj_t pyb_flash_readblocks(mp_obj_t self, mp_obj_t block_num, mp_obj_t buf) {
+STATIC mp_obj_t pyb_flash_readblocks(size_t n_args, const mp_obj_t *args) {
+// STATIC mp_obj_t pyb_flash_readblocks(mp_obj_t self, mp_obj_t block_num, mp_obj_t buf) {
+    mp_obj_base_t *self = (mp_obj_base_t*)MP_OBJ_TO_PTR(args[0]);
+    mp_int_t block_num = mp_obj_get_int(args[1]);
+    mp_obj_t buf = MP_OBJ_TO_PTR(args[2]);
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf, &bufinfo, MP_BUFFER_WRITE);
-    mp_uint_t ret = storage_read_blocks(bufinfo.buf, mp_obj_get_int(block_num), bufinfo.len / FLASH_BLOCK_SIZE);
+    mp_uint_t ret = storage_read_blocks(bufinfo.buf, block_num, bufinfo.len / FLASH_BLOCK_SIZE);
     return MP_OBJ_NEW_SMALL_INT(ret);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(pyb_flash_readblocks_obj, pyb_flash_readblocks);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_flash_readblocks_obj, 3, 4, pyb_flash_readblocks);
 
 STATIC mp_obj_t pyb_flash_writeblocks(mp_obj_t self, mp_obj_t block_num, mp_obj_t buf) {
     mp_buffer_info_t bufinfo;
