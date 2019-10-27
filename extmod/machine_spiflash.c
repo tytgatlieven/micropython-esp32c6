@@ -149,36 +149,44 @@ STATIC mp_obj_t machine_spiflash_ioctl(mp_obj_t self_in, mp_obj_t op_in, mp_obj_
         
         case BP_IOCTL_SEC_SIZE:
             return MP_OBJ_NEW_SMALL_INT(self->block_size);
+        
+        case BP_IOCTL_ERASE_BLOCK:
+            return MP_OBJ_NEW_SMALL_INT(mp_spiflash_erase_block(self->spiflash, mp_obj_get_int(arg_in)));
     }
     return MP_OBJ_NEW_SMALL_INT(-MP_EINVAL);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_spiflash_ioctl_obj, machine_spiflash_ioctl);
 
-
-STATIC mp_obj_t machine_spiflash_readblocks(mp_obj_t self_in, mp_obj_t block_num_in, mp_obj_t buf) {
-    mp_machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(self_in);
+STATIC mp_obj_t machine_spiflash_readblocks(size_t n_args, const mp_obj_t *args) {
+    mp_machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_buffer_info_t bufinfo;
-    uint32_t block_num = mp_obj_get_int(block_num_in) + self->block_start;
+    uint32_t block_num = mp_obj_get_int(args[1]) + self->block_start;
+    uint32_t block_offset = (n_args == 4) ? mp_obj_get_int(args[3]) : 0;
+    uint32_t addr = block_num * self->block_size + block_offset;
+    mp_obj_t buf = MP_OBJ_TO_PTR(args[2]);
 
     mp_get_buffer_raise(buf, &bufinfo, MP_BUFFER_WRITE);
 
     uint32_t basepri = raise_irq_pri(IRQ_PRI_FLASH); // prevent cache flushing and USB access
-    mp_spiflash_cached_read(self->spiflash, block_num * self->block_size, bufinfo.len, bufinfo.buf);
+    mp_spiflash_cached_read(self->spiflash, addr, bufinfo.len, bufinfo.buf);
     restore_irq_pri(basepri);
 
     return mp_obj_new_bool(1);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_spiflash_readblocks_obj, machine_spiflash_readblocks);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_spiflash_readblocks_obj, 3, 4, machine_spiflash_readblocks);
 
-STATIC mp_obj_t machine_spiflash_writeblocks(mp_obj_t self_in, mp_obj_t block_num_in, mp_obj_t buf) {
-    mp_machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(self_in);
+STATIC mp_obj_t machine_spiflash_writeblocks(size_t n_args, const mp_obj_t *args) {
+    mp_machine_spiflash_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     mp_buffer_info_t bufinfo;
-    uint32_t block_num = mp_obj_get_int(block_num_in) + self->block_start;
+    uint32_t block_num = mp_obj_get_int(args[1]) + self->block_start;
+    uint32_t block_offset = (n_args == 4) ? mp_obj_get_int(args[3]) : 0;
+    uint32_t addr = block_num * self->block_size + block_offset;
+    mp_obj_t buf = MP_OBJ_TO_PTR(args[2]);
 
     mp_get_buffer_raise(buf, &bufinfo, MP_BUFFER_READ);
     
     uint32_t basepri = raise_irq_pri(IRQ_PRI_FLASH); // prevent cache flushing and USB access
-    int ret = mp_spiflash_cached_write(self->spiflash, block_num * self->block_size, bufinfo.len, bufinfo.buf);
+    int ret = mp_spiflash_cached_write(self->spiflash, addr, bufinfo.len, bufinfo.buf);
     if (self->spiflash->flags & 1) {
         // led_state(PYB_LED_RED, 1); // indicate a dirty cache with LED on
         self->flash_tick_counter_last_write = HAL_GetTick();
@@ -187,7 +195,7 @@ STATIC mp_obj_t machine_spiflash_writeblocks(mp_obj_t self_in, mp_obj_t block_nu
 
     return mp_obj_new_bool(ret == 0);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(machine_spiflash_writeblocks_obj, machine_spiflash_writeblocks);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_spiflash_writeblocks_obj, 3, 4, machine_spiflash_writeblocks);
 
 STATIC const mp_rom_map_elem_t machine_spiflash_locals_dict_table[] = {
     // block device protocol
