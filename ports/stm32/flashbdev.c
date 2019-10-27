@@ -211,12 +211,12 @@ static uint8_t *flash_cache_get_addr_for_read(uint32_t flash_addr) {
     return (uint8_t*)flash_addr;
 }
 
-static uint32_t convert_block_to_flash_addr(uint32_t block) {
+static uint32_t convert_block_to_flash_addr(uint32_t block, uint32_t offset) {
     if (block < FLASH_MEM_SEG1_NUM_BLOCKS) {
-        return FLASH_MEM_SEG1_START_ADDR + block * FLASH_BLOCK_SIZE;
+        return FLASH_MEM_SEG1_START_ADDR + block * FLASH_BLOCK_SIZE + offset;
     }
     if (block < FLASH_MEM_SEG1_NUM_BLOCKS + FLASH_MEM_SEG2_NUM_BLOCKS) {
-        return FLASH_MEM_SEG2_START_ADDR + (block - FLASH_MEM_SEG1_NUM_BLOCKS) * FLASH_BLOCK_SIZE;
+        return FLASH_MEM_SEG2_START_ADDR + (block - FLASH_MEM_SEG1_NUM_BLOCKS) * FLASH_BLOCK_SIZE + offset;
     }
     // can add more flash segments here if needed, following above pattern
 
@@ -267,9 +267,9 @@ static void flash_bdev_irq_handler(void) {
     }
 }
 
-bool flash_bdev_readblock(uint8_t *dest, uint32_t block) {
+bool flash_bdev_readblock(uint8_t *dest, uint32_t block, uint32_t offset) {
     // non-MBR block, get data from flash memory, possibly via cache
-    uint32_t flash_addr = convert_block_to_flash_addr(block);
+    uint32_t flash_addr = convert_block_to_flash_addr(block, offset);
     if (flash_addr == -1) {
         // bad block number
         return false;
@@ -279,9 +279,9 @@ bool flash_bdev_readblock(uint8_t *dest, uint32_t block) {
     return true;
 }
 
-bool flash_bdev_writeblock(const uint8_t *src, uint32_t block) {
+bool flash_bdev_writeblock(const uint8_t *src, uint32_t block, uint32_t offset) {
     // non-MBR block, copy to cache
-    uint32_t flash_addr = convert_block_to_flash_addr(block);
+    uint32_t flash_addr = convert_block_to_flash_addr(block, offset);
     if (flash_addr == -1) {
         // bad block number
         return false;
