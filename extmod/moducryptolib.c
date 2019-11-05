@@ -34,50 +34,12 @@
 
 #include "py/runtime.h"
 
+#include "crypto-algorithms/aes.h"
+
 // This module implements crypto ciphers API, roughly following
 // https://www.python.org/dev/peps/pep-0272/ . Exact implementation
 // of PEP 272 can be made with a simple wrapper which adds all the
 // needed boilerplate.
-
-// values follow PEP 272
-enum {
-    UCRYPTOLIB_MODE_ECB = 1,
-    UCRYPTOLIB_MODE_CBC = 2,
-    UCRYPTOLIB_MODE_CTR = 6,
-};
-
-struct ctr_params {
-    // counter is the IV of the AES context.
-
-    size_t offset; // in encrypted_counter
-    // encrypted counter
-    uint8_t encrypted_counter[16];
-};
-
-#if MICROPY_SSL_AXTLS
-#include "lib/axtls/crypto/crypto.h"
-
-#define AES_CTX_IMPL AES_CTX
-#endif
-
-#if MICROPY_SSL_MBEDTLS
-#include <mbedtls/aes.h>
-
-// we can't run mbedtls AES key schedule until we know whether we're used for encrypt or decrypt.
-// therefore, we store the key & keysize and on the first call to encrypt/decrypt we override them
-// with the mbedtls_aes_context, as they are not longer required. (this is done to save space)
-struct mbedtls_aes_ctx_with_key {
-    union {
-        mbedtls_aes_context mbedtls_ctx;
-        struct {
-            uint8_t key[32];
-            uint8_t keysize;
-        } init_data;
-    } u;
-    unsigned char iv[16];
-};
-#define AES_CTX_IMPL struct mbedtls_aes_ctx_with_key
-#endif
 
 typedef struct _mp_obj_aes_t {
     mp_obj_base_t base;
@@ -97,119 +59,14 @@ static inline bool is_ctr_mode(int block_mode) {
     #endif
 }
 
-static inline struct ctr_params *ctr_params_from_aes(mp_obj_aes_t *o) {
+static inline ctr_params_t *ctr_params_from_aes(mp_obj_aes_t *o) {
     // ctr_params follows aes object struct
-    return (struct ctr_params*)&o[1];
+    return (ctr_params_t*)&o[1];
 }
 
-#if MICROPY_SSL_AXTLS
-STATIC void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]) {
-    assert(16 == keysize || 32 == keysize);
-    AES_set_key(ctx, key, iv, (16 == keysize) ? AES_MODE_128 : AES_MODE_256);
-}
 
-STATIC void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt) {
-    if (!encrypt) {
-        AES_convert_key(ctx);
-    }
-}
 
-STATIC void aes_process_ecb_impl(AES_CTX_IMPL *ctx, const uint8_t in[16], uint8_t out[16], bool encrypt) {
-    memcpy(out, in, 16);
-    // We assume that out (vstr.buf or given output buffer) is uint32_t aligned
-    uint32_t *p = (uint32_t*)out;
-    // axTLS likes it weird and complicated with byteswaps
-    for (int i = 0; i < 4; i++) {
-        p[i] = MP_HTOBE32(p[i]);
-    }
-    if (encrypt) {
-        AES_encrypt(ctx, p);
-    } else {
-        AES_decrypt(ctx, p);
-    }
-    for (int i = 0; i < 4; i++) {
-        p[i] = MP_BE32TOH(p[i]);
-    }
-}
 
-STATIC void aes_process_cbc_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, bool encrypt) {
-    if (encrypt) {
-        AES_cbc_encrypt(ctx, in, out, in_len);
-    } else {
-        AES_cbc_decrypt(ctx, in, out, in_len);
-    }
-}
-
-#if MICROPY_PY_UCRYPTOLIB_CTR
-// axTLS doesn't have CTR support out of the box. This implements the counter part using the ECB primitive.
-STATIC void aes_process_ctr_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, struct ctr_params *ctr_params) {
-    size_t n = ctr_params->offset;
-    uint8_t *const counter = ctx->iv;
-
-    while (in_len--) {
-        if (n == 0) {
-            aes_process_ecb_impl(ctx, counter, ctr_params->encrypted_counter, true);
-
-            // increment the 128-bit counter
-            for (int i = 15; i >= 0; --i) {
-                if (++counter[i] != 0) {
-                    break;
-                }
-            }
-        }
-
-        *out++ = *in++ ^ ctr_params->encrypted_counter[n];
-        n = (n + 1) & 0xf;
-    }
-
-    ctr_params->offset = n;
-}
-#endif
-
-#endif
-
-#if MICROPY_SSL_MBEDTLS
-STATIC void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]) {
-    ctx->u.init_data.keysize = keysize;
-    memcpy(ctx->u.init_data.key, key, keysize);
-
-    if (NULL != iv) {
-        memcpy(ctx->iv, iv, sizeof(ctx->iv));
-    }
-}
-
-STATIC void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt) {
-    // first, copy key aside
-    uint8_t key[32];
-    uint8_t keysize = ctx->u.init_data.keysize;
-    memcpy(key, ctx->u.init_data.key, keysize);
-    // now, override key with the mbedtls context object
-    mbedtls_aes_init(&ctx->u.mbedtls_ctx);
-
-    // setkey call will succeed, we've already checked the keysize earlier.
-    assert(16 == keysize || 32 == keysize);
-    if (encrypt) {
-        mbedtls_aes_setkey_enc(&ctx->u.mbedtls_ctx, key, keysize * 8);
-    } else {
-        mbedtls_aes_setkey_dec(&ctx->u.mbedtls_ctx, key, keysize * 8);
-    }
-}
-
-STATIC void aes_process_ecb_impl(AES_CTX_IMPL *ctx, const uint8_t in[16], uint8_t out[16], bool encrypt) {
-    mbedtls_aes_crypt_ecb(&ctx->u.mbedtls_ctx, encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT, in, out);
-}
-
-STATIC void aes_process_cbc_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, bool encrypt) {
-    mbedtls_aes_crypt_cbc(&ctx->u.mbedtls_ctx, encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT, in_len, ctx->iv, in, out);
-}
-
-#if MICROPY_PY_UCRYPTOLIB_CTR
-STATIC void aes_process_ctr_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, struct ctr_params *ctr_params) {
-    mbedtls_aes_crypt_ctr(&ctx->u.mbedtls_ctx, in_len, &ctr_params->offset, ctx->iv, ctr_params->encrypted_counter, in, out);
-}
-#endif
-
-#endif
 
 STATIC mp_obj_t ucryptolib_aes_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 2, 3, false);
@@ -228,7 +85,7 @@ STATIC mp_obj_t ucryptolib_aes_make_new(const mp_obj_type_t *type, size_t n_args
             mp_raise_ValueError("mode");
     }
 
-    mp_obj_aes_t *o = m_new_obj_var(mp_obj_aes_t, struct ctr_params, !!is_ctr_mode(block_mode));
+    mp_obj_aes_t *o = m_new_obj_var(mp_obj_aes_t, ctr_params_t, !!is_ctr_mode(block_mode));
     o->base.type = type;
 
     o->block_mode = block_mode;

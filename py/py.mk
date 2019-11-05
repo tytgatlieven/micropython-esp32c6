@@ -193,6 +193,8 @@ PY_EXTMOD_O_BASENAME = \
 	extmod/vfs_fat_file.o \
 	extmod/utime_mphal.o \
 	extmod/uos_dupterm.o \
+	extmod/crypto-algorithms/aes_axtls.o \
+	extmod/crypto-algorithms/aes_mbedtls.o \
 	lib/embed/abort_.o \
 	lib/utils/printf.o \
 
