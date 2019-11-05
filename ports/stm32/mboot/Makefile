@@ -124,12 +124,33 @@ SRC_USBDEV = $(addprefix ports/stm32/$(USBDEV_DIR)/,\
 	core/src/usbd_ioreq.c \
 	)
 
+
+# CFLAGS_MOD += -DMICROPY_SSL_AXTLS=1 -D__ets__ -I$(TOP)/lib/axtls/ssl -I$(TOP)/lib/axtls/crypto -I$(TOP)/extmod/axtls-include
+# AXTLS_DIR = lib/axtls
+# $(BUILD)/$(AXTLS_DIR)/%.o: CFLAGS += -Wno-all -Wno-incompatible-pointer-types -Wno-unused-parameter -Wno-uninitialized -Wno-sign-compare -Wno-old-style-definition $(AXTLS_DEFS_EXTRA)
+# SRC_MOD += $(addprefix $(AXTLS_DIR)/,\
+# 	ssl/asn1.c \
+# 	ssl/loader.c \
+# 	ssl/tls1.c \
+# 	ssl/tls1_svr.c \
+# 	ssl/tls1_clnt.c \
+# 	ssl/x509.c \
+# 	crypto/aes.c \
+# 	crypto/bigint.c \
+# 	crypto/crypto_misc.c \
+# 	crypto/hmac.c \
+# 	crypto/md5.c \
+# 	crypto/rsa.c \
+# 	crypto/sha1.c \
+# 	)
+
 OBJ =
 OBJ += $(addprefix $(BUILD)/, $(SRC_LIB:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_O))
 OBJ += $(addprefix $(BUILD)/, $(SRC_HAL:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_USBDEV:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 
 all: $(TOP)/lib/stm32lib/README.md $(BUILD)/firmware.dfu $(BUILD)/firmware.hex
 
