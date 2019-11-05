@@ -31,11 +31,6 @@
 #include "extmod/uzlib/uzlib.h"
 #include "mboot.h"
 
-#if MICROPY_SSL_AXTLS
-#include "lib/axtls/crypto/crypto.h"
-#define AES_CTX_IMPL AES_CTX
-#endif
-
 #if MBOOT_FSLOAD
 
 #define DICT_SIZE (1 << 15)
@@ -95,56 +90,6 @@ static int gz_stream_read(size_t len, uint8_t *buf) {
     return gz_stream.tinf.dest - buf;
 }
 
-// STATIC void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]) {
-//     // assert(16 == keysize || 32 == keysize);
-//     AES_set_key(ctx, key, iv, (16 == keysize) ? AES_MODE_128 : AES_MODE_256);
-// }
-
-// STATIC void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt) {
-//     if (!encrypt) {
-//         AES_convert_key(ctx);
-//     }
-// }
-
-// STATIC void aes_process_ecb_impl(AES_CTX_IMPL *ctx, const uint8_t in[16], uint8_t out[16], bool encrypt) {
-//     memcpy(out, in, 16);
-//     // We assume that out (vstr.buf or given output buffer) is uint32_t aligned
-//     uint32_t *p = (uint32_t*)out;
-//     // axTLS likes it weird and complicated with byteswaps
-//     for (int i = 0; i < 4; i++) {
-//         p[i] = MP_HTOBE32(p[i]);
-//     }
-//     if (encrypt) {
-//         AES_encrypt(ctx, p);
-//     } else {
-//         AES_decrypt(ctx, p);
-//     }
-//     for (int i = 0; i < 4; i++) {
-//         p[i] = MP_BE32TOH(p[i]);
-//     }
-// }
-
-#define os_bswap_32(x)    ((uint32_t)               \
-    ((((x) & 0xff000000) >> 24) |                   \
-     (((x) & 0x00ff0000) >>  8) |                   \
-     (((x) & 0x0000ff00) <<  8) |                   \
-     (((x) & 0x000000ff) << 24)))
-
-uint32_t ntohl(uint32_t netlong) {
-    return os_bswap_32(netlong);
-}
-uint32_t htonl(uint32_t netlong) {
-    return os_bswap_32(netlong);
-}
-
-STATIC void aes_process_cbc_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, bool encrypt) {
-    // if (encrypt) {
-    //     AES_cbc_encrypt(ctx, in, out, in_len);
-    // } else {
-    //     AES_cbc_decrypt(ctx, in, out, in_len);
-    // }
-}
-
 static int fsload_program_file(FATFS *fatfs, const char *filename, bool write_to_flash) {
     int res = gz_stream_open(fatfs, filename);
     if (res != 0) {
@@ -153,7 +98,6 @@ static int fsload_program_file(FATFS *fatfs, const char *filename, bool write_to
 
     // Parse DFU
     uint8_t buf[512];
-    uint8_t dec[512];
     size_t file_offset;
 
     // Read file header, <5sBIB
@@ -219,7 +163,6 @@ static int fsload_program_file(FATFS *fatfs, const char *filename, bool write_to
         }
 
         // Read element data and possibly write to flash
-        AES_CTX_IMPL ctx;
         for (uint32_t s = elem_size; s;) {
             uint32_t l = s;
             if (l > sizeof(buf)) {
@@ -229,9 +172,8 @@ static int fsload_program_file(FATFS *fatfs, const char *filename, bool write_to
             if (res != l) {
                 return -1;
             }
-            aes_process_cbc_impl(&ctx, buf, dec, l, false);
             if (write_to_flash) {
-                res = do_write(elem_addr, dec, l);
+                res = do_write(elem_addr, buf, l);
                 if (res != 0) {
                     return -1;
                 }
