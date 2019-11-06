@@ -26,9 +26,11 @@
  */
 
 #include "aes.h"
+#include <string.h>
+#include <assert.h>
 
 #if MICROPY_SSL_MBEDTLS
-STATIC void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]) {
+void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]) {
     ctx->u.init_data.keysize = keysize;
     memcpy(ctx->u.init_data.key, key, keysize);
 
@@ -37,7 +39,7 @@ STATIC void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size
     }
 }
 
-STATIC void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt) {
+void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt) {
     // first, copy key aside
     uint8_t key[32];
     uint8_t keysize = ctx->u.init_data.keysize;
@@ -54,16 +56,16 @@ STATIC void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt) {
     }
 }
 
-STATIC void aes_process_ecb_impl(AES_CTX_IMPL *ctx, const uint8_t in[16], uint8_t out[16], bool encrypt) {
+void aes_process_ecb_impl(AES_CTX_IMPL *ctx, const uint8_t in[16], uint8_t out[16], bool encrypt) {
     mbedtls_aes_crypt_ecb(&ctx->u.mbedtls_ctx, encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT, in, out);
 }
 
-STATIC void aes_process_cbc_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, bool encrypt) {
+void aes_process_cbc_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, bool encrypt) {
     mbedtls_aes_crypt_cbc(&ctx->u.mbedtls_ctx, encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT, in_len, ctx->iv, in, out);
 }
 
 #if MICROPY_PY_UCRYPTOLIB_CTR
-STATIC void aes_process_ctr_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, ctr_params_t *ctr_params) {
+void aes_process_ctr_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, ctr_params_t *ctr_params) {
     mbedtls_aes_crypt_ctr(&ctx->u.mbedtls_ctx, in_len, &ctr_params->offset, ctx->iv, ctr_params->encrypted_counter, in, out);
 }
 #endif

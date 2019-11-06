@@ -72,3 +72,11 @@ struct mbedtls_aes_ctx_with_key {
 #endif
 
 #endif
+
+void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]);
+void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt);
+void aes_process_ecb_impl(AES_CTX_IMPL *ctx, const uint8_t in[16], uint8_t out[16], bool encrypt);
+void aes_process_cbc_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, bool encrypt);
+#if MICROPY_PY_UCRYPTOLIB_CTR
+STATIC void aes_process_ctr_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, ctr_params_t *ctr_params);
+#endif
