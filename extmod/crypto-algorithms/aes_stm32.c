@@ -29,7 +29,7 @@
 #include <string.h>
 #include <assert.h>
 
-#if MICROPY_SSL_MBEDTLS
+#if MICROPY_SSL_AES_STM32
 
 void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]) {
     ctx->u.init_data.keysize = keysize;

@@ -8,6 +8,10 @@ CFLAGS_MOD += -DFFCONF_H=\"lib/oofatfs/ffconf.h\"
 
 ifeq ($(MICROPY_PY_USSL),1)
 CFLAGS_MOD += -DMICROPY_PY_USSL=1
+
+ifeq ($(MICROPY_SSL_AES_STM32),1)
+CFLAGS_MOD += -DMICROPY_SSL_AES_STM32=1 -DCRYP=aes
+endif
 ifeq ($(MICROPY_SSL_AXTLS),1)
 CFLAGS_MOD += -DMICROPY_SSL_AXTLS=1 -I$(TOP)/lib/axtls/ssl -I$(TOP)/lib/axtls/crypto -I$(TOP)/extmod/axtls-include
 AXTLS_DIR = lib/axtls

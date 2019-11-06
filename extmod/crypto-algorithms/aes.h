@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include "py/mpconfig.h"
 
-#if MICROPY_PY_UCRYPTOLIB
+#if MICROPY_PY_UCRYPTOLIB || 1
 
 // values follow PEP 272
 enum {
@@ -46,13 +46,21 @@ typedef struct ctr_params {
 } ctr_params_t;
 
 
-#if MICROPY_SSL_AXTLS
+#if MICROPY_SSL_AES_STM32
+
+typedef struct stm32_aes_cxt {
+    CRYP_HandleTypeDef hw_aes;
+    unsigned char      aes_key[32];
+    uint32_t           ctx_save_cr;
+};
+#define AES_CTX_IMPL struct stm32_aes_cxt
+
+#elif MICROPY_SSL_AXTLS
 #include "lib/axtls/crypto/crypto.h"
 
 #define AES_CTX_IMPL AES_CTX
-#endif
 
-#if MICROPY_SSL_MBEDTLS
+#elif MICROPY_SSL_MBEDTLS
 #include <mbedtls/aes.h>
 
 // we can't run mbedtls AES key schedule until we know whether we're used for encrypt or decrypt.
@@ -69,9 +77,9 @@ struct mbedtls_aes_ctx_with_key {
     unsigned char iv[16];
 };
 #define AES_CTX_IMPL struct mbedtls_aes_ctx_with_key
-#endif
 
 #endif
+
 
 void aes_initial_set_key_impl(AES_CTX_IMPL *ctx, const uint8_t *key, size_t keysize, const uint8_t iv[16]);
 void aes_final_set_key_impl(AES_CTX_IMPL *ctx, bool encrypt);
@@ -79,4 +87,6 @@ void aes_process_ecb_impl(AES_CTX_IMPL *ctx, const uint8_t in[16], uint8_t out[1
 void aes_process_cbc_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, bool encrypt);
 #if MICROPY_PY_UCRYPTOLIB_CTR
 STATIC void aes_process_ctr_impl(AES_CTX_IMPL *ctx, const uint8_t *in, uint8_t *out, size_t in_len, ctr_params_t *ctr_params);
+#endif
+
 #endif

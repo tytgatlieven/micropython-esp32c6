@@ -32,6 +32,7 @@
 #include "stm32f7xx_hal_can.h"
 #include "stm32f7xx_hal_cortex.h"
 #include "stm32f7xx_hal_crc.h"
+#include "stm32f7xx_hal_cryp.h"
 #include "stm32f7xx_hal_dac.h"
 #include "stm32f7xx_hal_dcmi.h"
 #include "stm32f7xx_hal_flash.h"
