@@ -24,6 +24,7 @@
  * THE SOFTWARE.
  */
 
+#include <string.h>
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "extmod/modbluetooth_hci.h"
@@ -138,6 +139,50 @@ pyb_uart_obj_t mp_bluetooth_hci_uart_obj;
 
 static uint8_t hci_uart_rxbuf[512];
 
+// STATIC int mp_bluetooth_hci_uart_cmd_raw(size_t len, uint8_t *buf) {
+//     uart_tx_strn(&mp_bluetooth_hci_uart_obj, (void*)buf, len);
+//     for (int i = 0; i < 6; ++i) {
+//         while (!uart_rx_any(&mp_bluetooth_hci_uart_obj)) {
+//             MICROPY_EVENT_POLL_HOOK
+//         }
+//         buf[i] = uart_rx_char(&mp_bluetooth_hci_uart_obj);
+//     }
+
+//     // expect a comand complete event (event 0x0e)
+//     if (buf[0] != 0x04 || buf[1] != 0x0e) {
+//         printf("unknown response: %02x %02x %02x %02x\n", buf[0], buf[1], buf[2], buf[3]);
+//         return -1;
+//     }
+
+//     /*
+//     if buf[3:6] != cmd[:3]:
+//         print('response doesn\'t match cmd:', cmd, ev)
+//         return b''
+//         */
+
+//     int sz = buf[2] - 3;
+//     for (int i = 0; i < sz; ++i) {
+//         while (!uart_rx_any(&mp_bluetooth_hci_uart_obj)) {
+//             MICROPY_EVENT_POLL_HOOK
+//         }
+//         buf[i] = uart_rx_char(&mp_bluetooth_hci_uart_obj);
+//     }
+
+//     return 0;
+// }
+
+// STATIC int mp_bluetooth_hci_uart_cmd(int ogf, int ocf, size_t param_len, const uint8_t *param_buf) {
+//     uint8_t *buf = mp_bluetooth_hci_cmd_buf;
+//     buf[0] = 0x01;
+//     buf[1] = ocf;
+//     buf[2] = ogf << 2 | ocf >> 8;
+//     buf[3] = param_len;
+//     if (param_len) {
+//         memcpy(buf + 4, param_buf, param_len);
+//     }
+//     return mp_bluetooth_hci_uart_cmd_raw(4 + param_len, buf);
+// }
+
 mp_obj_t mp_uart_interrupt(mp_obj_t self_in) {
     // New HCI data, schedule mp_bluetooth_hci_poll to make the stack handle it.
     mp_bluetooth_hci_poll_wrapper(0);
@@ -153,12 +198,41 @@ int mp_bluetooth_hci_uart_init(uint32_t port) {
     mp_bluetooth_hci_uart_obj.timeout = 2;
     mp_bluetooth_hci_uart_obj.timeout_char = 2;
     MP_STATE_PORT(pyb_uart_obj_all)[mp_bluetooth_hci_uart_obj.uart_id - 1] = &mp_bluetooth_hci_uart_obj;
+    // // Drain input buffers
+    // while (mp_bluetooth_hci_uart_readchar() != -1) ;
     return 0;
 }
 
 int mp_bluetooth_hci_uart_set_baudrate(uint32_t baudrate) {
     uart_init(&mp_bluetooth_hci_uart_obj, baudrate, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
     uart_set_rxbuf(&mp_bluetooth_hci_uart_obj, sizeof(hci_uart_rxbuf), hci_uart_rxbuf);
+    return 0;
+}
+
+MP_WEAK int mp_bluetooth_hci_controller_init(void) {
+    return 0;
+}
+
+MP_WEAK int mp_bluetooth_hci_controller_activate(void) {
+    // // Reset
+    // mp_bluetooth_hci_uart_cmd(0x03, 0x0003, 0, NULL);
+    // mp_hal_delay_ms(100);
+    return 0;
+}
+
+MP_WEAK int mp_bluetooth_hci_controller_deactivate(void) {
+    return 0;
+}
+
+MP_WEAK int mp_bluetooth_hci_controller_sleep_maybe(void) {
+    return 0;
+}
+
+MP_WEAK bool mp_bluetooth_hci_controller_woken(void) {
+    return true;
+}
+
+MP_WEAK int mp_bluetooth_hci_controller_wakeup(void) {
     return 0;
 }
 
