@@ -63,10 +63,10 @@ void hal_uart_start_tx(uint32_t port) {
         mp_bluetooth_hci_cmd_buf[len++] = data;
     }
 
-    #if 0
-    printf("[% 8d] BTUTX: %02x", mp_hal_ticks_ms(), hci_cmd_buf[0]);
+    #if 1
+    printf("[% 8d] BTUTX: %02x", mp_hal_ticks_ms(), mp_bluetooth_hci_cmd_buf[0]);
     for (int i = 1; i < len; ++i) {
-        printf(":%02x", hci_cmd_buf[i]);
+        printf(":%02x", mp_bluetooth_hci_cmd_buf[i]);
     }
     printf("\n");
     #endif
