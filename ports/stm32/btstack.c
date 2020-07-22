@@ -73,6 +73,7 @@ STATIC int btstack_uart_init(const btstack_uart_config_t *uart_config) {
 
     // Set up the UART periperhal.
     mp_bluetooth_hci_uart_init(MICROPY_HW_BLE_UART_ID);
+    mp_bluetooth_hci_uart_set_baudrate(MICROPY_HW_BLE_UART_BAUDRATE);
 
     return 0;
 }
