@@ -171,7 +171,7 @@ STATIC int mp_bluetooth_hci_uart_cmd_raw(size_t len, uint8_t *buf) {
     return 0;
 }
 
-STATIC int mp_bluetooth_hci_uart_cmd(int ogf, int ocf, size_t param_len, const uint8_t *param_buf) {
+int mp_bluetooth_hci_uart_cmd(int ogf, int ocf, size_t param_len, const uint8_t *param_buf) {
     uint8_t *buf = mp_bluetooth_hci_cmd_buf;
     buf[0] = 0x01;
     buf[1] = ocf;
@@ -204,11 +204,11 @@ int mp_bluetooth_hci_uart_init(uint32_t port) {
 }
 
 int mp_bluetooth_hci_uart_set_baudrate(uint32_t baudrate) {
-    uart_init(&mp_bluetooth_hci_uart_obj, 115200, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_NONE);//UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
-    // uart_init(&mp_bluetooth_hci_uart_obj, baudrate, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
+    // uart_init(&mp_bluetooth_hci_uart_obj, 115200, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_NONE);//UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
+    uart_init(&mp_bluetooth_hci_uart_obj, baudrate, UART_WORDLENGTH_8B, UART_PARITY_NONE, UART_STOPBITS_1, UART_HWCONTROL_RTS | UART_HWCONTROL_CTS);
     uart_set_rxbuf(&mp_bluetooth_hci_uart_obj, sizeof(hci_uart_rxbuf), hci_uart_rxbuf);
     // // Drain input buffers
-    while (mp_bluetooth_hci_uart_readchar() != -1) ;
+    // while (mp_bluetooth_hci_uart_readchar() != -1) ;
     return 0;
 }
 
@@ -218,8 +218,8 @@ MP_WEAK int mp_bluetooth_hci_controller_init(void) {
 
 MP_WEAK int mp_bluetooth_hci_controller_activate(void) {
     // Reset
-    mp_bluetooth_hci_uart_cmd(0x03, 0x0003, 0, NULL);
-    mp_hal_delay_ms(100);
+    // mp_bluetooth_hci_uart_cmd(0x03, 0x0003, 0, NULL);
+    // mp_hal_delay_ms(100);
     return 0;
 }
 
