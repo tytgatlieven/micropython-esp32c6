@@ -47,8 +47,11 @@ void mp_bluetooth_hci_poll(void) {
     }
 
     mp_bluetooth_nimble_hci_uart_process();
+
     os_callout_process();
-    os_eventq_run_all();
+    if (mp_bluetooth_nimble_ble_state == MP_BLUETOOTH_NIMBLE_BLE_STATE_ACTIVE) {
+        os_eventq_run_all();
+    }
 }
 
 void mp_bluetooth_nimble_port_preinit(void) {
@@ -72,7 +75,7 @@ void mp_bluetooth_nimble_hci_uart_rx(hal_uart_rx_cb_t rx_cb, void *rx_arg) {
 
     int chr;
     while ((chr = mp_bluetooth_hci_uart_readchar()) >= 0) {
-        printf("UART RX: %02x\n", chr);
+        //printf("UART RX: %02x\n", chr);
         rx_cb(rx_arg, chr);
     }
 
