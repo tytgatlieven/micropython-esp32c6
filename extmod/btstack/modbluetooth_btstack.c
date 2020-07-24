@@ -523,6 +523,11 @@ int mp_bluetooth_init(void) {
     sm_set_er(dummy_key);
     sm_set_ir(dummy_key);
 
+    #if MICROPY_PY_BLUETOOTH_RANDOM_ADDR
+    // gap_random_address_set_update_period(5000);
+    gap_random_address_set_mode(GAP_RANDOM_ADDRESS_RESOLVABLE);
+    #endif
+
     #if MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE
     gatt_client_init();
     #endif
