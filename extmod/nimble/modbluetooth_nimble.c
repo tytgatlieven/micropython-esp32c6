@@ -45,7 +45,11 @@
 #define MICROPY_PY_BLUETOOTH_DEFAULT_GAP_NAME "MPY NIMBLE"
 #endif
 
+#if MICROPY_PY_BLUETOOTH_DIAGNOSTIC_LOGGING
 #define DEBUG_EVENT_printf(...) // printf(__VA_ARGS__)
+#else
+#define DEBUG_EVENT_printf(...)
+#endif
 
 #define ERRNO_BLUETOOTH_NOT_ACTIVE MP_ENODEV
 
@@ -234,17 +238,20 @@ STATIC int gap_event_cb(struct ble_gap_event *event, void *arg) {
         case BLE_GAP_EVENT_CONNECT:
             if (event->connect.status == 0) {
                 // Connection established.
+                DEBUG_EVENT_printf("gap_event_cb: Connection established: %d\n", event->connect.conn_handle);
                 ble_gap_conn_find(event->connect.conn_handle, &desc);
                 reverse_addr_byte_order(addr, desc.peer_id_addr.val);
                 mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_CONNECT, event->connect.conn_handle, desc.peer_id_addr.type, addr);
             } else {
                 // Connection failed.
+                DEBUG_EVENT_printf("gap_event_cb: Connection failed: %d %d\n", event->connect.conn_handle, event->connect.status);
                 mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_DISCONNECT, event->connect.conn_handle, 0xff, addr);
             }
             break;
 
         case BLE_GAP_EVENT_DISCONNECT:
             // Disconnect.
+            DEBUG_EVENT_printf("gap_event_cb: Disconnect: %d\n", event->disconnect.conn.conn_handle);
             reverse_addr_byte_order(addr, event->disconnect.conn.peer_id_addr.val);
             mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_DISCONNECT, event->disconnect.conn.conn_handle, event->disconnect.conn.peer_id_addr.type, addr);
             break;
@@ -395,27 +402,32 @@ int mp_bluetooth_gap_advertise_start(bool connectable, int32_t interval_us, cons
 
     ret = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
     if (ret == 0) {
+        DEBUG_EVENT_printf("ble_gap_adv_started with BLE_OWN_ADDR_PUBLIC\n");
         return 0;
     }
     ret = ble_gap_adv_start(BLE_OWN_ADDR_RPA_PUBLIC_DEFAULT, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
     if (ret == 0) {
+        DEBUG_EVENT_printf("ble_gap_adv_started with BLE_OWN_ADDR_RPA_PUBLIC_DEFAULT\n");
         return 0;
     }
     ret = ble_gap_adv_start(BLE_OWN_ADDR_RPA_RANDOM_DEFAULT, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
     if (ret == 0) {
+        DEBUG_EVENT_printf("ble_gap_adv_started with BLE_OWN_ADDR_RPA_RANDOM_DEFAULT\n");
         return 0;
     }
     ret = ble_gap_adv_start(BLE_OWN_ADDR_RANDOM, NULL, BLE_HS_FOREVER, &adv_params, gap_event_cb, NULL);
     if (ret == 0) {
+        DEBUG_EVENT_printf("ble_gap_adv_started with BLE_OWN_ADDR_RANDOM\n");
         return 0;
     }
-    DEBUG_EVENT_printf("ble_gap_adv_start: %d\n", ret);
+    DEBUG_EVENT_printf("ble_gap_adv_start: 0x%x\n", ret);
 
     return ble_hs_err_to_errno(ret);
 }
 
 void mp_bluetooth_gap_advertise_stop(void) {
     if (ble_gap_adv_active()) {
+        DEBUG_EVENT_printf("mp_bluetooth_gap_advertise_stop\n");
         ble_gap_adv_stop();
     }
 }
@@ -466,6 +478,7 @@ static int characteristic_access_cb(uint16_t conn_handle, uint16_t value_handle,
 }
 
 int mp_bluetooth_gatts_register_service_begin(bool append) {
+    DEBUG_EVENT_printf("mp_bluetooth_gatts_register_service_begin\n");
     if (!mp_bluetooth_is_active()) {
         return ERRNO_BLUETOOTH_NOT_ACTIVE;
     }
@@ -493,6 +506,7 @@ int mp_bluetooth_gatts_register_service_begin(bool append) {
 }
 
 int mp_bluetooth_gatts_register_service_end() {
+    DEBUG_EVENT_printf("mp_bluetooth_gatts_register_service_end\n");
     int ret = ble_gatts_start();
     if (ret != 0) {
         return ble_hs_err_to_errno(ret);
@@ -505,6 +519,8 @@ int mp_bluetooth_gatts_register_service(mp_obj_bluetooth_uuid_t *service_uuid, m
     if (MP_STATE_PORT(bluetooth_nimble_root_pointers)->n_services == MP_BLUETOOTH_NIMBLE_MAX_SERVICES) {
         return MP_E2BIG;
     }
+    DEBUG_EVENT_printf("mp_bluetooth_gatts_register_service\n");
+
     size_t handle_index = 0;
     size_t descriptor_index = 0;
 
@@ -566,8 +582,10 @@ int mp_bluetooth_gatts_register_service(mp_obj_bluetooth_uuid_t *service_uuid, m
 
 int mp_bluetooth_gap_disconnect(uint16_t conn_handle) {
     if (!mp_bluetooth_is_active()) {
+        DEBUG_EVENT_printf("mp_bluetooth_gap_disconnect: already not active\n");
         return ERRNO_BLUETOOTH_NOT_ACTIVE;
     }
+    DEBUG_EVENT_printf("mp_bluetooth_gap_disconnect\n");
     return ble_hs_err_to_errno(ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM));
 }
 
@@ -575,6 +593,7 @@ int mp_bluetooth_gatts_read(uint16_t value_handle, uint8_t **value, size_t *valu
     if (!mp_bluetooth_is_active()) {
         return ERRNO_BLUETOOTH_NOT_ACTIVE;
     }
+    DEBUG_EVENT_printf("mp_bluetooth_gatts_read\n");
     return mp_bluetooth_gatts_db_read(MP_STATE_PORT(bluetooth_nimble_root_pointers)->gatts_db, value_handle, value, value_len);
 }
 
@@ -582,6 +601,7 @@ int mp_bluetooth_gatts_write(uint16_t value_handle, const uint8_t *value, size_t
     if (!mp_bluetooth_is_active()) {
         return ERRNO_BLUETOOTH_NOT_ACTIVE;
     }
+    DEBUG_EVENT_printf("mp_bluetooth_gatts_write\n");
     return mp_bluetooth_gatts_db_write(MP_STATE_PORT(bluetooth_nimble_root_pointers)->gatts_db, value_handle, value, value_len);
 }
 
@@ -593,6 +613,7 @@ int mp_bluetooth_gatts_notify(uint16_t conn_handle, uint16_t value_handle) {
     }
     // Confusingly, notify/notify_custom/indicate are "gattc" function (even though they're used by peripherals (i.e. gatt servers)).
     // See https://www.mail-archive.com/dev@mynewt.apache.org/msg01293.html
+    DEBUG_EVENT_printf("mp_bluetooth_gatts_notify\n");
     return ble_hs_err_to_errno(ble_gattc_notify(conn_handle, value_handle));
 }
 
@@ -605,6 +626,7 @@ int mp_bluetooth_gatts_notify_send(uint16_t conn_handle, uint16_t value_handle, 
         return MP_ENOMEM;
     }
     // TODO: check that notify_custom takes ownership of om, if not os_mbuf_free_chain(om).
+    DEBUG_EVENT_printf("mp_bluetooth_gatts_notify_send\n");
     return ble_hs_err_to_errno(ble_gattc_notify_custom(conn_handle, value_handle, om));
 }
 

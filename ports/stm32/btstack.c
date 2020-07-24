@@ -203,7 +203,10 @@ void mp_bluetooth_btstack_port_init(void) {
         btstack_run_loop_embedded_get_instance()->init();
     }
 
-    // hci_dump_open(NULL, HCI_DUMP_STDOUT);
+    #if MICROPY_PY_BLUETOOTH_DIAGNOSTIC_LOGGING
+    hci_dump_open(NULL, HCI_DUMP_STDOUT);
+    #endif
+
     const hci_transport_t *transport = hci_transport_h4_instance(&btstack_uart_block);
     hci_init(transport, &hci_transport_config_uart);
 

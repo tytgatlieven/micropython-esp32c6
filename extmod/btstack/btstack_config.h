@@ -7,7 +7,9 @@
 #define ENABLE_LE_CENTRAL
 // #define ENABLE_CLASSIC
 #define ENABLE_LE_DATA_CHANNELS
-// #define ENABLE_LOG_INFO
+#if MICROPY_PY_BLUETOOTH_DIAGNOSTIC_LOGGING
+#define ENABLE_LOG_INFO
+#endif
 #define ENABLE_LOG_ERROR
 
 // BTstack configuration. buffers, sizes, ...
