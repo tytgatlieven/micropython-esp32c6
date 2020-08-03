@@ -237,6 +237,7 @@ STATIC int gap_event_cb(struct ble_gap_event *event, void *arg) {
                 ble_gap_conn_find(event->connect.conn_handle, &desc);
                 reverse_addr_byte_order(addr, desc.peer_id_addr.val);
                 mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_CONNECT, event->connect.conn_handle, desc.peer_id_addr.type, addr);
+                ble_gattc_exchange_mtu(event->connect.conn_handle, NULL, NULL);
             } else {
                 // Connection failed.
                 mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_DISCONNECT, event->connect.conn_handle, 0xff, addr);
@@ -249,14 +250,19 @@ STATIC int gap_event_cb(struct ble_gap_event *event, void *arg) {
             mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_DISCONNECT, event->disconnect.conn.conn_handle, event->disconnect.conn.peer_id_addr.type, addr);
             break;
 
-        case BLE_GAP_EVENT_NOTIFY_TX: {
+        case BLE_GAP_EVENT_NOTIFY_TX:
             DEBUG_EVENT_printf("gap_event_cb: notify_tx: %d %d\n", event->notify_tx.indication, event->notify_tx.status);
             // This event corresponds to either a sent notify/indicate (status == 0), or an indication confirmation (status != 0).
             if (event->notify_tx.indication && event->notify_tx.status != 0) {
                 // Map "done/ack" to 0, otherwise pass the status directly.
                 mp_bluetooth_gatts_on_indicate_complete(event->notify_tx.conn_handle, event->notify_tx.attr_handle, event->notify_tx.status == BLE_HS_EDONE ? 0 : event->notify_tx.status);
             }
-        }
+            break;
+
+        case BLE_GAP_EVENT_MTU:
+            DEBUG_EVENT_printf("gap_event_cb: mtu update: cid=%d mtu=%d\n", event->mtu.channel_id, event->mtu.value);
+            mp_bluetooth_gatts_on_mtu_update(event->mtu.conn_handle, event->mtu.value);
+            break;
     }
 
     return 0;
@@ -361,6 +367,11 @@ int mp_bluetooth_gap_set_device_name(const uint8_t *buf, size_t len) {
     memcpy(tmp_buf, buf, len);
     tmp_buf[len] = '\0';
     return ble_hs_err_to_errno(ble_svc_gap_device_name_set(tmp_buf));
+}
+
+int mp_bluetooth_gap_set_mtu(int len) {
+    DEBUG_EVENT_printf("mp_bluetooth mtu:%d\n", len);
+    return ble_hs_err_to_errno(ble_att_set_preferred_mtu(len));
 }
 
 int mp_bluetooth_gap_advertise_start(bool connectable, int32_t interval_us, const uint8_t *adv_data, size_t adv_data_len, const uint8_t *sr_data, size_t sr_data_len) {
@@ -736,6 +747,11 @@ STATIC int peripheral_gap_event_cb(struct ble_gap_event *event, void *arg) {
 
         case BLE_GAP_EVENT_CONN_UPDATE_REQ:
             // TODO
+            break;
+
+        case BLE_GAP_EVENT_MTU:
+            DEBUG_EVENT_printf("periph_gap_event_cb: mtu update: cid=%d mtu=%d\n", event->mtu.channel_id, event->mtu.value);
+            mp_bluetooth_gatts_on_mtu_update(event->mtu.conn_handle, event->mtu.value);
             break;
 
         default:
