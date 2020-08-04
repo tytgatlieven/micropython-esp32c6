@@ -110,6 +110,7 @@
 #define MP_BLUETOOTH_IRQ_GATTC_INDICATE                 (19)
 #define MP_BLUETOOTH_IRQ_GATTS_INDICATE_DONE            (20)
 #define MP_BLUETOOTH_IRQ_GATTS_MTU_UPDATE               (21)
+#define MP_BLUETOOTH_IRQ_GATTS_CONN_UPDATE              (22)
 
 /*
 These aren't included in the module for space reasons, but can be used
@@ -137,7 +138,33 @@ _IRQ_GATTC_NOTIFY = const(18)
 _IRQ_GATTC_INDICATE = const(19)
 _IRQ_GATTS_INDICATE_DONE = const(20)
 _IRQ_GATTS_MTU_UPDATE = const(21)
+_IRQ_GATTS_CONN_UPDATE = const(22)
 */
+
+// This is used to communicate common details about a connection
+struct mp_ble_connection_state {
+
+    /** If connection is encrypted */
+    unsigned encrypted:1;
+
+    /** If connection is authenticated */
+    unsigned authenticated:1;
+
+    /** If connection is bonded (security information is stored)  */
+    unsigned bonded:1;
+
+    /** Size of a key used for encryption */
+    unsigned key_size:5;
+
+    /** Connection interval */
+    uint16_t conn_itvl;
+
+    /** Connection latency */
+    uint16_t conn_latency;
+
+    /** Connection supervision timeout */
+    uint16_t supervision_timeout;
+};
 
 // Common UUID type.
 // Ports are expected to map this to their own internal UUID types.
@@ -258,6 +285,9 @@ void mp_bluetooth_gatts_on_indicate_complete(uint16_t conn_handle, uint16_t valu
 
 // Call this when MTU setting have changed.
 void mp_bluetooth_gatts_on_mtu_update(uint16_t conn_handle, uint16_t value);
+
+// Call this when any connection parameters have been changed.
+void mp_bluetooth_gatts_on_conn_update(uint16_t conn_handle, struct mp_ble_connection_state* state);
 
 #if MICROPY_PY_BLUETOOTH_GATTS_ON_READ_CALLBACK
 // Call this when a characteristic is read from. Return false to deny the read.

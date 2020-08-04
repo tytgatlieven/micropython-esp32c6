@@ -103,6 +103,21 @@ STATIC void reverse_addr_byte_order(uint8_t *addr_out, const uint8_t *addr_in) {
     }
 }
 
+STATIC int get_connection_state(uint16_t conn_handle, struct mp_ble_connection_state *state) {
+    struct ble_gap_conn_desc desc;
+    if (ble_gap_conn_find(conn_handle, &desc) == 0) {
+        state->encrypted = desc.sec_state.encrypted;
+        state->authenticated = desc.sec_state.authenticated;
+        state->bonded = desc.sec_state.bonded;
+        state->key_size = desc.sec_state.key_size;
+        state->conn_itvl = desc.conn_itvl;
+        state->conn_latency = desc.conn_latency;
+        state->supervision_timeout = desc.supervision_timeout;
+        return 0;
+    }
+    return -1;
+}
+
 #if MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE
 
 STATIC mp_obj_bluetooth_uuid_t create_mp_uuid(const ble_uuid_any_t *uuid) {
@@ -263,6 +278,29 @@ STATIC int gap_event_cb(struct ble_gap_event *event, void *arg) {
             DEBUG_EVENT_printf("gap_event_cb: mtu update: cid=%d mtu=%d\n", event->mtu.channel_id, event->mtu.value);
             mp_bluetooth_gatts_on_mtu_update(event->mtu.conn_handle, event->mtu.value);
             break;
+
+        case BLE_GAP_EVENT_CONN_UPDATE_REQ:
+            DEBUG_EVENT_printf("gap_event_cb: connection update request\n");
+            *event->conn_update_req.self_params = *event->conn_update_req.peer_params;
+            break;
+
+        case BLE_GAP_EVENT_CONN_UPDATE: {
+            DEBUG_EVENT_printf("gap_event_cb: connection update: status=%d\n", event->conn_update.status);
+            struct mp_ble_connection_state state;
+            if (get_connection_state(event->conn_update.conn_handle, &state) == 0) {
+                mp_bluetooth_gatts_on_conn_update(event->conn_update.conn_handle, &state);
+            }
+            break;
+        }
+ 
+        case BLE_GAP_EVENT_ENC_CHANGE: {
+            DEBUG_EVENT_printf("gap_event_cb: enc change: status=%d\n", event->enc_change.status);
+            struct mp_ble_connection_state state;
+            if (get_connection_state(event->enc_change.conn_handle, &state) == 0) {
+                mp_bluetooth_gatts_on_conn_update(event->enc_change.conn_handle, &state);
+            }
+            break;
+        }
     }
 
     return 0;
@@ -741,19 +779,33 @@ STATIC int peripheral_gap_event_cb(struct ble_gap_event *event, void *arg) {
             break;
         }
 
-        case BLE_GAP_EVENT_CONN_UPDATE:
-            // TODO
-            break;
-
-        case BLE_GAP_EVENT_CONN_UPDATE_REQ:
-            // TODO
-            break;
-
-        case BLE_GAP_EVENT_MTU:
+       case BLE_GAP_EVENT_MTU:
             DEBUG_EVENT_printf("periph_gap_event_cb: mtu update: cid=%d mtu=%d\n", event->mtu.channel_id, event->mtu.value);
             mp_bluetooth_gatts_on_mtu_update(event->mtu.conn_handle, event->mtu.value);
             break;
 
+        case BLE_GAP_EVENT_CONN_UPDATE_REQ:
+            DEBUG_EVENT_printf("periph_gap_event_cb: connection update request\n");
+            *event->conn_update_req.self_params = *event->conn_update_req.peer_params;
+            break;
+
+        case BLE_GAP_EVENT_CONN_UPDATE: {
+            DEBUG_EVENT_printf("periph_gap_event_cb: connection update: status=%d\n", event->conn_update.status);
+            struct mp_ble_connection_state state;
+            if (get_connection_state(event->conn_update.conn_handle, &state) == 0) {
+                mp_bluetooth_gatts_on_conn_update(event->conn_update.conn_handle, &state);
+            }
+            break;
+        }
+
+        case BLE_GAP_EVENT_ENC_CHANGE: {
+            DEBUG_EVENT_printf("periph_gap_event_cb: enc change: status=%d\n", event->enc_change.status);
+            struct mp_ble_connection_state state;
+            if (get_connection_state(event->enc_change.conn_handle, &state) == 0) {
+                mp_bluetooth_gatts_on_conn_update(event->enc_change.conn_handle, &state);
+            }
+            break;
+        }
         default:
             break;
     }
