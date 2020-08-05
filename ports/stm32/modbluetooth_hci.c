@@ -136,7 +136,11 @@ int mp_bluetooth_hci_uart_readchar(void) {
 
 pyb_uart_obj_t mp_bluetooth_hci_uart_obj;
 
-static uint8_t hci_uart_rxbuf[512];
+#ifndef MICROPY_HW_BLE_UART_RXBUF_LEN
+#define MICROPY_HW_BLE_UART_RXBUF_LEN 512
+#endif
+
+static uint8_t hci_uart_rxbuf[MICROPY_HW_BLE_UART_RXBUF_LEN];
 
 mp_obj_t mp_uart_interrupt(mp_obj_t self_in) {
     // New HCI data, schedule mp_bluetooth_hci_poll to make the stack handle it.
