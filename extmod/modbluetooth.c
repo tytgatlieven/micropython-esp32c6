@@ -935,6 +935,9 @@ STATIC mp_obj_t bluetooth_ble_invoke_irq(mp_obj_t none_in) {
         } else if (event == MP_BLUETOOTH_IRQ_GATTS_WRITE) {
             // conn_handle, value_handle
             ringbuf_extract(&o->ringbuf, data_tuple, 2, 0, NULL, 0, NULL, NULL);
+        } else if (event == MP_BLUETOOTH_IRQ_GATTS_READ) {
+            // conn_handle, value_handle
+            ringbuf_extract(&o->ringbuf, data_tuple, 2, 0, NULL, 0, NULL, NULL);
         } else if (event == MP_BLUETOOTH_IRQ_GATTS_MTU_UPDATE) {
             // conn_handle, mtu_size
             ringbuf_extract(&o->ringbuf, data_tuple, 2, 0, NULL, 0, NULL, NULL);
@@ -1039,6 +1042,16 @@ void mp_bluetooth_gap_on_connected_disconnected(uint8_t event, uint16_t conn_han
         for (int i = 0; i < 6; ++i) {
             ringbuf_put(&o->ringbuf, addr[i]);
         }
+    }
+    schedule_ringbuf(atomic_state);
+}
+
+void mp_bluetooth_gatts_on_read(uint16_t conn_handle, uint16_t value_handle) {
+    MICROPY_PY_BLUETOOTH_ENTER
+    mp_obj_bluetooth_ble_t *o = MP_OBJ_TO_PTR(MP_STATE_VM(bluetooth));
+    if (enqueue_irq(o, 2 + 2, MP_BLUETOOTH_IRQ_GATTS_READ)) {
+        ringbuf_put16(&o->ringbuf, conn_handle);
+        ringbuf_put16(&o->ringbuf, value_handle);
     }
     schedule_ringbuf(atomic_state);
 }

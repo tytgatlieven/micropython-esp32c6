@@ -879,6 +879,7 @@ STATIC uint16_t att_read_callback(hci_con_handle_t connection_handle, uint16_t a
     #endif
 
     uint16_t ret = att_read_callback_handle_blob(entry->data, entry->data_len, offset, buffer, buffer_size);
+    mp_bluetooth_gatts_on_read(connection_handle, att_handle);
     return ret;
 }
 

@@ -623,6 +623,8 @@ static int characteristic_access_cb(uint16_t conn_handle, uint16_t value_handle,
 
             os_mbuf_append(ctxt->om, entry->data, entry->data_len);
 
+            mp_bluetooth_gatts_on_read(conn_handle, value_handle);
+
             return 0;
         case BLE_GATT_ACCESS_OP_WRITE_CHR:
         case BLE_GATT_ACCESS_OP_WRITE_DSC:

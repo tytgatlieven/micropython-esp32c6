@@ -171,6 +171,9 @@ Event Handling
             elif event == _IRQ_GATTS_MTU_UPDATE:
                 # Connection MTU has been negotiated.
                 conn_handle, mtu_length = data
+            elif event == _IRQ_GATTS_READ:
+                # A central has performed a read
+                conn_handle, attr_handle = data
 
 The event codes are::
 

@@ -101,6 +101,7 @@
 #define MP_BLUETOOTH_IRQ_GATTC_INDICATE                 (19)
 #define MP_BLUETOOTH_IRQ_GATTS_INDICATE_DONE            (20)
 #define MP_BLUETOOTH_IRQ_GATTS_MTU_UPDATE               (21)
+#define MP_BLUETOOTH_IRQ_GATTS_READ                     (24)
 
 #define MP_BLUETOOTH_ADDRESS_MODE_PUBLIC (0)
 #define MP_BLUETOOTH_ADDRESS_MODE_RANDOM (1)
@@ -133,6 +134,7 @@ _IRQ_GATTC_NOTIFY = const(18)
 _IRQ_GATTC_INDICATE = const(19)
 _IRQ_GATTS_INDICATE_DONE = const(20)
 _IRQ_GATTS_MTU_UPDATE = const(21)
+_IRQ_GATTS_READ = const(24)
 */
 
 // Common UUID type.
@@ -255,6 +257,9 @@ void mp_bluetooth_gap_on_connected_disconnected(uint8_t event, uint16_t conn_han
 
 // Call this when a characteristic is written to.
 void mp_bluetooth_gatts_on_write(uint16_t conn_handle, uint16_t value_handle);
+
+// Call this when a characteristic is read from.
+void mp_bluetooth_gatts_on_read(uint16_t conn_handle, uint16_t value_handle);
 
 // Call this when an acknowledgment is received for an indication.
 void mp_bluetooth_gatts_on_indicate_complete(uint16_t conn_handle, uint16_t value_handle, uint8_t status);
