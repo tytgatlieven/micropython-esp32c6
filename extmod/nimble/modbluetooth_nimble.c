@@ -151,6 +151,8 @@ volatile int mp_bluetooth_nimble_ble_state = MP_BLUETOOTH_NIMBLE_BLE_STATE_OFF;
 
 STATIC void reset_cb(int reason) {
     (void)reason;
+    printf("reset_cb: reason: 0x%04x\n", reason);
+    mp_bluetooth_nimble_ble_state = MP_BLUETOOTH_NIMBLE_BLE_STATE_WAITING_FOR_SYNC;
 }
 
 STATIC bool has_public_address() {
