@@ -1114,6 +1114,17 @@ int mp_bluetooth_gatts_set_buffer(uint16_t value_handle, size_t len, bool append
     return mp_bluetooth_gatts_db_resize(MP_STATE_PORT(bluetooth_btstack_root_pointers)->gatts_db, value_handle, len, append);
 }
 
+int mp_bluetooth_gap_pair(int conn_handle, bool bond, bool mitm, bool lesc) {
+    sm_set_authentication_requirements(
+        (bond? SM_AUTHREQ_BONDING: 0) |
+        (mitm ? SM_AUTHREQ_MITM_PROTECTION : 0 ) |
+        (lesc ? SM_AUTHREQ_SECURE_CONNECTION : 0 )
+    );
+    // start pairing
+    sm_request_pairing(conn_handle);
+    return 0;
+}
+
 int mp_bluetooth_gap_disconnect(uint16_t conn_handle) {
     DEBUG_printf("mp_bluetooth_gap_disconnect\n");
     gap_disconnect(conn_handle);
