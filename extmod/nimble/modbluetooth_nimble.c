@@ -302,6 +302,20 @@ STATIC int gap_event_cb(struct ble_gap_event *event, void *arg) {
             // A central has subscribed to us.
             break;
             
+        case BLE_GAP_EVENT_PHY_UPDATE_COMPLETE:
+            DEBUG_printf("gap_event_cb: phy update: %d\n", event->phy_updated.tx_phy);
+            break;
+
+        case BLE_GAP_EVENT_CONN_UPDATE: {
+            DEBUG_printf("gap_event_cb: connection update: status=%d\n", event->conn_update.status);
+            struct ble_gap_conn_desc desc;
+            if (ble_gap_conn_find(event->conn_update.conn_handle, &desc) == 0) {
+                mp_bluetooth_gatts_on_conn_update(event->conn_update.conn_handle,
+                    desc.conn_itvl, desc.conn_latency, desc.supervision_timeout);
+            }
+            break;
+        }
+            
         case BLE_GAP_EVENT_REPEAT_PAIRING: {
             /* We already have a bond with the peer, but it is attempting to
             * establish a new secure link.  This app sacrifices security for
@@ -940,13 +954,15 @@ STATIC int peripheral_gap_event_cb(struct ble_gap_event *event, void *arg) {
             break;
         }
 
-        case BLE_GAP_EVENT_CONN_UPDATE:
-            // TODO
+        case BLE_GAP_EVENT_CONN_UPDATE: {
+            DEBUG_printf("periph_gap_event_cb: connection update: status=%d\n", event->conn_update.status);
+            struct ble_gap_conn_desc desc;
+            if (ble_gap_conn_find(event->conn_update.conn_handle, &desc) == 0) {
+                mp_bluetooth_gatts_on_conn_update(event->conn_update.conn_handle,
+                    desc.conn_itvl, desc.conn_latency, desc.supervision_timeout);
+            }
             break;
-
-        case BLE_GAP_EVENT_CONN_UPDATE_REQ:
-            // TODO
-            break;
+        }
 
         default:
             break;
