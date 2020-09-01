@@ -42,8 +42,11 @@ uint8_t mp_bluetooth_hci_cmd_buf[4 + 256];
 // Must be provided by the stack bindings (e.g. mpnimbleport.c or mpbtstackport.c).
 extern void mp_bluetooth_hci_poll(void);
 
-// Hook for pendsv poller to run this periodically every 128ms
-#define BLUETOOTH_HCI_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & 0x7f) == 0)
+// Hook for pendsv poller to run this periodically every 128ms (by default)
+#ifndef MICROPY_BLUETOOTH_HCI_TICK_RATE
+#define MICROPY_BLUETOOTH_HCI_TICK_RATE 128
+#endif
+#define BLUETOOTH_HCI_TICK(tick) (((tick) & ~(SYSTICK_DISPATCH_NUM_SLOTS - 1) & (MICROPY_BLUETOOTH_HCI_TICK_RATE-1)) == 0)
 
 // Called periodically (systick) or directly (e.g. uart irq).
 void mp_bluetooth_hci_poll_wrapper(uint32_t ticks_ms) {
