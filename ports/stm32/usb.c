@@ -401,7 +401,11 @@ STATIC mp_obj_t pyb_usb_mode(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
         ARG_hid,
         #endif
         #if USBD_SUPPORT_HS_MODE
-        ARG_high_speed
+        ARG_high_speed,
+        #endif
+        ARG_manufacturer, ARG_product_fs, ARG_config_fs, ARG_iface_fs,
+        #if USBD_SUPPORT_HS_MODE
+        ARG_product_hs, ARG_config_hs, ARG_iface_hs 
         #endif
     };
     static const mp_arg_t allowed_args[] = {
@@ -417,6 +421,15 @@ STATIC mp_obj_t pyb_usb_mode(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
         #endif
         #if USBD_SUPPORT_HS_MODE
         { MP_QSTR_high_speed, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
+        #endif
+        { MP_QSTR_manufacturer, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+        { MP_QSTR_product_fs, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+        { MP_QSTR_config_fs, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+        { MP_QSTR_iface_fs, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+        #if USBD_SUPPORT_HS_MODE
+        { MP_QSTR_product_hs, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+        { MP_QSTR_config_hs, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
+        { MP_QSTR_iface_hs, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = MP_ROM_NONE} },
         #endif
     };
 
@@ -610,6 +623,32 @@ STATIC mp_obj_t pyb_usb_mode(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
         goto bad_mode;
     }
 
+    #endif
+
+
+    // get descriptor strings
+    if (mp_obj_is_str_or_bytes(args[ARG_manufacturer].u_obj)) {
+        mp_obj_desc_manufacturer_str = args[ARG_manufacturer].u_obj;
+    }
+    if (mp_obj_is_str_or_bytes(args[ARG_product_fs].u_obj)) {
+        mp_obj_desc_product_fs_str = args[ARG_product_fs].u_obj;
+    }
+    if (mp_obj_is_str_or_bytes(args[ARG_config_fs].u_obj)) {
+        mp_obj_desc_config_fs_str = args[ARG_config_fs].u_obj;
+    }
+    if (mp_obj_is_str_or_bytes(args[ARG_iface_fs].u_obj)) {
+        mp_obj_desc_iface_fs_str = args[ARG_iface_fs].u_obj;
+    }
+    #if USBD_SUPPORT_HS_MODE
+    if (mp_obj_is_str_or_bytes(args[ARG_product_hs].u_obj)) {
+        mp_obj_desc_product_hs_str = args[ARG_product_hs].u_obj;
+    }
+    if (mp_obj_is_str_or_bytes(args[ARG_config_hs].u_obj)) {
+        mp_obj_desc_config_hs_str = args[ARG_config_hs].u_obj;
+    }
+    if (mp_obj_is_str_or_bytes(args[ARG_iface_hs].u_obj)) {
+        mp_obj_desc_iface_hs_str = args[ARG_iface_hs].u_obj;
+    }
     #endif
 
     return mp_const_none;

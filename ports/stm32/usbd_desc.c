@@ -71,6 +71,16 @@
 #define USBD_INTERFACE_FS_STRING      "Pyboard Interface"
 #endif
 
+
+mp_obj_t mp_obj_desc_manufacturer_str = MP_ROM_NONE;
+mp_obj_t mp_obj_desc_product_fs_str = MP_ROM_NONE;
+mp_obj_t mp_obj_desc_config_fs_str = MP_ROM_NONE;
+mp_obj_t mp_obj_desc_iface_fs_str = MP_ROM_NONE;
+mp_obj_t mp_obj_desc_product_hs_str = MP_ROM_NONE;
+mp_obj_t mp_obj_desc_config_hs_str = MP_ROM_NONE;
+mp_obj_t mp_obj_desc_iface_hs_str = MP_ROM_NONE;
+
+
 __ALIGN_BEGIN static const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __ALIGN_END = {
     USB_LEN_LANGID_STR_DESC,
     USB_DESC_TYPE_STRING,
@@ -140,14 +150,26 @@ STATIC uint8_t *USBD_StrDescriptor(USBD_HandleTypeDef *pdev, uint8_t idx, uint16
             return (uint8_t *)USBD_LangIDDesc; // the data should only be read from this buf
 
         case USBD_IDX_MFC_STR:
-            str = USBD_MANUFACTURER_STRING;
+            if (mp_obj_desc_manufacturer_str != MP_ROM_NONE) {
+                str = mp_obj_str_get_str(mp_obj_desc_manufacturer_str);
+            } else {
+                str = USBD_MANUFACTURER_STRING;
+            }
             break;
 
         case USBD_IDX_PRODUCT_STR:
             if (pdev->dev_speed == USBD_SPEED_HIGH) {
-                str = USBD_PRODUCT_HS_STRING;
+                if (mp_obj_desc_product_hs_str != MP_ROM_NONE) {
+                    str = mp_obj_str_get_str(mp_obj_desc_product_hs_str);
+                } else {
+                    str = USBD_PRODUCT_HS_STRING;
+                }
             } else {
-                str = USBD_PRODUCT_FS_STRING;
+                if (mp_obj_desc_product_fs_str != MP_ROM_NONE) {
+                    str = mp_obj_str_get_str(mp_obj_desc_product_fs_str);
+                } else {
+                    str = USBD_PRODUCT_FS_STRING;
+                }
             }
             break;
 
@@ -174,17 +196,33 @@ STATIC uint8_t *USBD_StrDescriptor(USBD_HandleTypeDef *pdev, uint8_t idx, uint16
 
         case USBD_IDX_CONFIG_STR:
             if (pdev->dev_speed == USBD_SPEED_HIGH) {
-                str = USBD_CONFIGURATION_HS_STRING;
+                if (mp_obj_desc_config_hs_str != MP_ROM_NONE) {
+                    str = mp_obj_str_get_str(mp_obj_desc_config_hs_str);
+                } else {
+                    str = USBD_CONFIGURATION_HS_STRING;
+                }
             } else {
-                str = USBD_CONFIGURATION_FS_STRING;
+                if (mp_obj_desc_config_fs_str != MP_ROM_NONE) {
+                    str = mp_obj_str_get_str(mp_obj_desc_config_fs_str);
+                } else {
+                    str = USBD_CONFIGURATION_FS_STRING;
+                }
             }
             break;
 
         case USBD_IDX_INTERFACE_STR:
             if (pdev->dev_speed == USBD_SPEED_HIGH) {
-                str = USBD_INTERFACE_HS_STRING;
+                if (mp_obj_desc_iface_hs_str != MP_ROM_NONE) {
+                    str = mp_obj_str_get_str(mp_obj_desc_iface_hs_str);
+                } else {
+                    str = USBD_INTERFACE_HS_STRING;
+                }
             } else {
-                str = USBD_INTERFACE_FS_STRING;
+                if (mp_obj_desc_iface_fs_str != MP_ROM_NONE) {
+                    str = mp_obj_str_get_str(mp_obj_desc_iface_fs_str);
+                } else {
+                    str = USBD_INTERFACE_FS_STRING;
+                }
             }
             break;
 

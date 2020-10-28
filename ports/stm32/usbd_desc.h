@@ -27,6 +27,15 @@
 #define MICROPY_INCLUDED_STM32_USBD_DESC_H
 
 #include "usbd_cdc_msc_hid.h"
+#include "py/obj.h"
+
+extern mp_obj_t mp_obj_desc_manufacturer_str;
+extern mp_obj_t mp_obj_desc_product_fs_str;
+extern mp_obj_t mp_obj_desc_config_fs_str;
+extern mp_obj_t mp_obj_desc_iface_fs_str;
+extern mp_obj_t mp_obj_desc_product_hs_str;
+extern mp_obj_t mp_obj_desc_config_hs_str;
+extern mp_obj_t mp_obj_desc_iface_hs_str;
 
 extern const USBD_DescriptorsTypeDef USBD_Descriptors;
 
