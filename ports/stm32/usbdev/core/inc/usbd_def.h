@@ -88,6 +88,7 @@
 #define  USB_REQ_GET_INTERFACE                          0x0A
 #define  USB_REQ_SET_INTERFACE                          0x0B
 #define  USB_REQ_SYNCH_FRAME                            0x0C
+#define  USB_REQ_MS_VENDOR_CODE                         0xA0
 
 #define  USB_DESC_TYPE_DEVICE                              1
 #define  USB_DESC_TYPE_CONFIGURATION                       2
@@ -96,6 +97,7 @@
 #define  USB_DESC_TYPE_ENDPOINT                            5
 #define  USB_DESC_TYPE_DEVICE_QUALIFIER                    6
 #define  USB_DESC_TYPE_OTHER_SPEED_CONFIGURATION           7
+#define  USB_DESC_TYPE_OS_STR                              0xEE
 
 
 #define USB_CONFIG_REMOTE_WAKEUP                           2
@@ -173,6 +175,9 @@ typedef struct _Device_cb
   uint8_t  *(*GetOtherSpeedConfigDescriptor)(struct _USBD_HandleTypeDef *pdev, uint16_t *length);
   uint8_t  *(*GetDeviceQualifierDescriptor)(struct _USBD_HandleTypeDef *pdev, uint16_t *length);
 
+  // #if (USBD_SUPPORT_WINUSB == 1) 
+  uint8_t  *(*GetWinUSBOSDescriptor)(uint16_t *length); 
+  // #endif   
 } USBD_ClassTypeDef;
 
 /* Following USB Device Speed */
@@ -197,6 +202,11 @@ typedef struct
 {
   uint8_t *(*GetDeviceDescriptor)(struct _USBD_HandleTypeDef *pdev, uint16_t *length);
   uint8_t *(*GetStrDescriptor)(struct _USBD_HandleTypeDef *pdev, uint8_t idx, uint16_t *length);
+
+// #if (USBD_SUPPORT_WINUSB==1)
+   uint8_t *(*GetWinUSBOSFeatureDescriptor)(uint16_t *length);
+   uint8_t *(*GetWinUSBOSPropertyDescriptor)(uint16_t *length);
+// #endif
 } USBD_DescriptorsTypeDef;
 
 /* USB Device handle structure */
