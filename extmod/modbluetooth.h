@@ -114,6 +114,7 @@
 #define MP_BLUETOOTH_IRQ_L2CAP_DISCONNECT               (24)
 #define MP_BLUETOOTH_IRQ_L2CAP_RECV                     (25)
 #define MP_BLUETOOTH_IRQ_L2CAP_SEND_READY               (26)
+#define MP_BLUETOOTH_IRQ_GATTS_CONN_UPDATE              (27)
 
 #define MP_BLUETOOTH_ADDRESS_MODE_PUBLIC (0)
 #define MP_BLUETOOTH_ADDRESS_MODE_RANDOM (1)
@@ -151,6 +152,7 @@ _IRQ_L2CAP_CONNECT = const(23)
 _IRQ_L2CAP_DISCONNECT = const(24)
 _IRQ_L2CAP_RECV = const(25)
 _IRQ_L2CAP_SEND_READY = const(26)
+_IRQ_GATTS_CONN_UPDATE = const(27)
 */
 
 // bluetooth.UUID type.
@@ -286,6 +288,9 @@ void mp_bluetooth_gatts_on_write(uint16_t conn_handle, uint16_t value_handle);
 
 // Call this when an acknowledgment is received for an indication.
 void mp_bluetooth_gatts_on_indicate_complete(uint16_t conn_handle, uint16_t value_handle, uint8_t status);
+
+// Call this when any connection parameters have been changed.
+void mp_bluetooth_gatts_on_conn_update(uint16_t conn_handle, uint16_t conn_itvl, uint16_t conn_latency, uint16_t supervision_timeout);
 
 // Call this when a characteristic is read from. Return false to deny the read.
 bool mp_bluetooth_gatts_on_read_request(uint16_t conn_handle, uint16_t value_handle);
