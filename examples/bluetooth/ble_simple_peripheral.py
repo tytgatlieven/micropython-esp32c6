@@ -4,13 +4,16 @@ import bluetooth
 import random
 import struct
 import time
+from copy import deepcopy
 from ble_advertising import advertising_payload
+from ble_pairing import BlePairing
 
 from micropython import const
 
 _IRQ_CENTRAL_CONNECT = const(1)
 _IRQ_CENTRAL_DISCONNECT = const(2)
 _IRQ_GATTS_WRITE = const(3)
+_IRQ_GATTS_ENC_UPDATE = const(28)
 
 _UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 _UART_TX = (
@@ -37,6 +40,7 @@ class BLESimplePeripheral:
         self._write_callback = None
         self._payload = advertising_payload(name=name, services=[_UART_UUID])
         self._advertise()
+        self._pairing = BlePairing("keystore.json")
 
     def _irq(self, event, data):
         # Track connections so we can send notifications.
@@ -55,6 +59,13 @@ class BLESimplePeripheral:
             value = self._ble.gatts_read(value_handle)
             if value_handle == self._handle_rx and self._write_callback:
                 self._write_callback(value)
+
+        elif event == _IRQ_GATTS_ENC_UPDATE:
+            conn_handle, encrypted, authenticated, bonded, key_size = data
+            print('_IRQ_GATTS_ENC_UPDATE: encrypted: %s, authenticated: %s, bonded: %s, key_size: %s' % (encrypted, authenticated, bonded, key_size))
+
+        else:
+            return self._pairing.irq(event, data)
 
     def send(self, data):
         for conn_handle in self._connections:
@@ -82,14 +93,14 @@ def demo():
 
     i = 0
     while True:
-        if p.is_connected():
-            # Short burst of queued notifications.
-            for _ in range(3):
-                data = str(i) + "_"
-                print("TX", data)
-                p.send(data)
-                i += 1
-        time.sleep_ms(100)
+        # if p.is_connected():
+        #     # Short burst of queued notifications.
+        #     for _ in range(3):
+        #         data = str(i) + "_"
+        #         print("TX", data)
+        #         p.send(data)
+        #         i += 1
+        time.sleep_ms(1000)
 
 
 if __name__ == "__main__":

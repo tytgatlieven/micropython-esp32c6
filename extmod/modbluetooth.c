@@ -49,7 +49,7 @@
 
 #define MP_BLUETOOTH_CONNECT_DEFAULT_SCAN_DURATION_MS 2000
 
-#define MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN 5
+#define MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN 11
 
 #if !MICROPY_PY_BLUETOOTH_USE_SYNC_EVENTS
 // This formula is intended to allow queuing the data of a large characteristic
@@ -1147,6 +1147,120 @@ void mp_bluetooth_gatts_on_enc_update(uint16_t conn_handle, bool encrypted, bool
     invoke_irq_handler(MP_BLUETOOTH_IRQ_GATTS_ENC_UPDATE, &conn_handle, 1, args, 4, NULL_ADDR, NULL_I8, 0, NULL_UUID, NULL_DATA, 0);
 }
 
+mp_obj_t _mp_bluetooth_bond_read_delete(uint8_t event, uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t ediv, uint64_t rand_num, bool ediv_rand_present, uint16_t chr_val_handle, uint8_t skip) {
+    mp_obj_bluetooth_ble_t *o = MP_OBJ_TO_PTR(MP_STATE_VM(bluetooth));
+    if (o->irq_handler == mp_const_none) {
+        return mp_const_none;
+    }
+
+    mp_obj_array_t mv_addr;
+    mp_obj_array_t mv_rand;
+
+    mp_obj_tuple_t *data_tuple = mp_local_alloc(sizeof(mp_obj_tuple_t) + sizeof(mp_obj_t) * MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN);
+    data_tuple->base.type = &mp_type_tuple;
+    data_tuple->len = 0;
+
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(bond_type);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(addr_type);
+    mp_obj_memoryview_init(&mv_addr, 'B', 0, 6, (void *)addr);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_addr);
+    if (ediv_rand_present) {
+        data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(ediv);
+        mp_obj_memoryview_init(&mv_rand, 'B', 0, 8, (void *)(uint8_t *)&rand_num);
+        data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_rand);
+    } else {
+        data_tuple->items[data_tuple->len++] = mp_const_none;
+        data_tuple->items[data_tuple->len++] = mp_const_none;
+    }
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(chr_val_handle);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(skip);
+
+    assert(data_tuple->len <= MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN);
+    mp_obj_t ret = mp_call_function_2(o->irq_handler, MP_OBJ_NEW_SMALL_INT(event), MP_OBJ_FROM_PTR(data_tuple));
+    return ret;
+}
+
+mp_obj_t mp_bluetooth_bond_read(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t ediv, uint64_t rand_num, bool ediv_rand_present, uint16_t chr_val_handle, uint8_t skip) {
+    return _mp_bluetooth_bond_read_delete(MP_BLUETOOTH_IRQ_BOND_READ, bond_type, addr_type, addr, ediv, rand_num, ediv_rand_present, chr_val_handle, skip);
+}
+
+mp_obj_t mp_bluetooth_bond_delete(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t ediv, uint64_t rand_num, bool ediv_rand_present, uint16_t chr_val_handle, uint8_t skip) {
+    return _mp_bluetooth_bond_read_delete(MP_BLUETOOTH_IRQ_BOND_DELETE, bond_type, addr_type, addr, ediv, rand_num, ediv_rand_present, chr_val_handle, skip);
+}
+
+mp_obj_t mp_bluetooth_bond_write_sec(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint8_t key_size, uint16_t ediv, uint64_t rand_num, 
+                                     const uint8_t *ltk, bool ltk_present, const uint8_t *irk, bool irk_present, const uint8_t *csrk, bool csrk_present, 
+                                     bool authenticated, bool secure_connection) {
+    mp_obj_bluetooth_ble_t *o = MP_OBJ_TO_PTR(MP_STATE_VM(bluetooth));
+    if (o->irq_handler == mp_const_none) {
+        return mp_const_none;
+    }
+    mp_obj_array_t mv_addr;
+    mp_obj_array_t mv_rand;
+    mp_obj_array_t mv_ltk;
+    mp_obj_array_t mv_irk;
+    mp_obj_array_t mv_csrk;
+
+    mp_obj_tuple_t *data_tuple = mp_local_alloc(sizeof(mp_obj_tuple_t) + sizeof(mp_obj_t) * MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN);
+    data_tuple->base.type = &mp_type_tuple;
+    data_tuple->len = 0;
+
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(bond_type);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(addr_type);
+    mp_obj_memoryview_init(&mv_addr, 'B', 0, 6, (void *)addr);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_addr);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(key_size);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(ediv);
+    mp_obj_memoryview_init(&mv_rand, 'B', 0, 8, (void *)(uint8_t *)&rand_num);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_rand);
+    if (ltk_present) {
+        mp_obj_memoryview_init(&mv_ltk, 'B', 0, 16, (void *)ltk);
+        data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_ltk);
+    } else {
+        data_tuple->items[data_tuple->len++] = mp_const_none;
+    }
+    if (irk_present) {
+        mp_obj_memoryview_init(&mv_irk, 'B', 0, 16, (void *)irk);
+        data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_irk);
+    } else {
+        data_tuple->items[data_tuple->len++] = mp_const_none;
+    }
+    if (csrk_present) {
+        mp_obj_memoryview_init(&mv_csrk, 'B', 0, 16, (void *)csrk);
+        data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_csrk);
+    } else {
+        data_tuple->items[data_tuple->len++] = mp_const_none;
+    }
+    data_tuple->items[data_tuple->len++] = authenticated ? mp_const_true : mp_const_false;
+    data_tuple->items[data_tuple->len++] = secure_connection ? mp_const_true : mp_const_false;
+    
+    assert(data_tuple->len <= MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN);
+    mp_obj_t ret = mp_call_function_2(o->irq_handler, MP_OBJ_NEW_SMALL_INT(MP_BLUETOOTH_IRQ_BOND_WRITE), MP_OBJ_FROM_PTR(data_tuple));
+    return ret;
+}
+
+mp_obj_t mp_bluetooth_bond_write_cccd(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t chr_val_handle, uint8_t flags, bool value_changed) {
+    mp_obj_bluetooth_ble_t *o = MP_OBJ_TO_PTR(MP_STATE_VM(bluetooth));
+    if (o->irq_handler == mp_const_none) {
+        return mp_const_none;
+    }
+    mp_obj_array_t mv_addr;
+    mp_obj_tuple_t *data_tuple = mp_local_alloc(sizeof(mp_obj_tuple_t) + sizeof(mp_obj_t) * MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN);
+    data_tuple->base.type = &mp_type_tuple;
+    data_tuple->len = 0;
+
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(bond_type);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(addr_type);
+    mp_obj_memoryview_init(&mv_addr, 'B', 0, 6, (void *)addr);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_FROM_PTR(&mv_addr);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(chr_val_handle);
+    data_tuple->items[data_tuple->len++] = MP_OBJ_NEW_SMALL_INT(flags);
+    data_tuple->items[data_tuple->len++] = value_changed ? mp_const_true : mp_const_false;
+    assert(data_tuple->len <= MICROPY_PY_BLUETOOTH_MAX_EVENT_DATA_TUPLE_LEN);
+    mp_obj_t ret = mp_call_function_2(o->irq_handler, MP_OBJ_NEW_SMALL_INT(MP_BLUETOOTH_IRQ_BOND_WRITE), MP_OBJ_FROM_PTR(data_tuple));
+    return ret;
+}
+
 bool mp_bluetooth_gatts_on_read_request(uint16_t conn_handle, uint16_t value_handle) {
     uint16_t args[] = {conn_handle, value_handle};
     mp_obj_t result = invoke_irq_handler(MP_BLUETOOTH_IRQ_GATTS_READ_REQUEST, args, 2, NULL, 0, NULL_ADDR, NULL_I8, 0, NULL_UUID, NULL_DATA, 0);
@@ -1381,6 +1495,24 @@ void mp_bluetooth_gatts_on_enc_update(uint16_t conn_handle, bool encrypted, bool
         ringbuf_put(&o->ringbuf, key_size);
     }
     schedule_ringbuf(atomic_state);
+}
+
+mp_obj_t mp_bluetooth_bond_read(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t ediv, uint64_t rand_num, bool ediv_rand_present, uint16_t chr_val_handle, uint8_t skip) {
+    return mp_const_none;
+}
+
+mp_obj_t mp_bluetooth_bond_delete(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t ediv, uint64_t rand_num, bool ediv_rand_present, uint16_t chr_val_handle, uint8_t skip) {
+    return mp_const_none;
+}
+
+mp_obj_t mp_bluetooth_bond_write_sec(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint8_t key_size, uint16_t ediv, uint64_t rand_num, 
+                                     const uint8_t *ltk, bool ltk_present, const uint8_t *irk, bool irk_present, const uint8_t *csrk, bool csrk_present, 
+                                     bool authenticated, bool secure_connection) {
+    return mp_const_none;
+}
+
+mp_obj_t mp_bluetooth_bond_write_cccd(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t chr_val_handle, uint8_t flags, bool value_changed) {
+    return mp_const_none;
 }
 
 #if MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE

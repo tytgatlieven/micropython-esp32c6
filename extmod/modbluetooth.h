@@ -116,6 +116,9 @@
 #define MP_BLUETOOTH_IRQ_L2CAP_SEND_READY               (26)
 #define MP_BLUETOOTH_IRQ_GATTS_CONN_UPDATE              (27)
 #define MP_BLUETOOTH_IRQ_GATTS_ENC_UPDATE               (28)
+#define MP_BLUETOOTH_IRQ_BOND_READ                      (29)
+#define MP_BLUETOOTH_IRQ_BOND_WRITE                     (30)
+#define MP_BLUETOOTH_IRQ_BOND_DELETE                    (31)
 
 #define MP_BLUETOOTH_ADDRESS_MODE_PUBLIC (0)
 #define MP_BLUETOOTH_ADDRESS_MODE_RANDOM (1)
@@ -155,6 +158,9 @@ _IRQ_L2CAP_RECV = const(25)
 _IRQ_L2CAP_SEND_READY = const(26)
 _IRQ_GATTS_CONN_UPDATE = const(27)
 _IRQ_GATTS_ENC_UPDATE = const(28)
+_IRQ_BOND_READ = const(29)
+_IRQ_BOND_WRITE = const(30)
+_IRQ_BOND_DELETE = const(31)
 */
 
 // bluetooth.UUID type.
@@ -299,6 +305,14 @@ void mp_bluetooth_gatts_on_conn_update(uint16_t conn_handle, uint16_t conn_itvl,
 
 // Call this when any connection encryption has been changed.
 void mp_bluetooth_gatts_on_enc_update(uint16_t conn_handle, bool encrypted, bool authenticated, bool bonded, uint8_t key_size);
+
+// Interface for pairing/bonding key handling
+mp_obj_t mp_bluetooth_bond_read(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t ediv, uint64_t rand_num, bool ediv_rand_present, uint16_t chr_val_handle, uint8_t skip);
+mp_obj_t mp_bluetooth_bond_delete(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t ediv, uint64_t rand_num, bool ediv_rand_present, uint16_t chr_val_handle, uint8_t skip);
+mp_obj_t mp_bluetooth_bond_write_sec(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint8_t key_size, uint16_t ediv, uint64_t rand_num, 
+                                     const uint8_t *ltk, bool ltk_present, const uint8_t *irk, bool irk_present, const uint8_t *csrk, bool csrk_present, 
+                                     bool authenticated, bool secure_connection);
+mp_obj_t mp_bluetooth_bond_write_cccd(uint8_t bond_type, uint8_t addr_type, const uint8_t *addr, uint16_t chr_val_handle, uint8_t flags, bool value_changed);
 
 // Call this when a characteristic is read from. Return false to deny the read.
 bool mp_bluetooth_gatts_on_read_request(uint16_t conn_handle, uint16_t value_handle);

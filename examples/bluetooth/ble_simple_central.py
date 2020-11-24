@@ -73,22 +73,25 @@ class BLESimpleCentral:
 
     def _irq(self, event, data):
         if event == _IRQ_SCAN_RESULT:
+            print(data)
             addr_type, addr, adv_type, rssi, adv_data = data
             if adv_type in (_ADV_IND, _ADV_DIRECT_IND) and _UART_SERVICE_UUID in decode_services(
                 adv_data
             ):
                 # Found a potential device, remember it and stop scanning.
                 self._addr_type = addr_type
-                self._addr = bytes(
+                self._addr = bytearray(
                     addr
                 )  # Note: addr buffer is owned by caller so need to copy it.
                 self._name = decode_name(adv_data) or "?"
                 self._ble.gap_scan(None)
+                print("Go with:",self._addr)
 
         elif event == _IRQ_SCAN_DONE:
             if self._scan_callback:
                 if self._addr:
                     # Found a device during the scan (and the scan was explicitly stopped).
+                    print('_IRQ_SCAN_DONE', self._addr)
                     self._scan_callback(self._addr_type, self._addr, self._name)
                     self._scan_callback = None
                 else:
@@ -96,11 +99,13 @@ class BLESimpleCentral:
                     self._scan_callback(None, None, None)
 
         elif event == _IRQ_PERIPHERAL_CONNECT:
-            # Connect successful.
             conn_handle, addr_type, addr = data
+            print("Starting connect...", conn_handle, addr_type, addr)
+            print(self._addr)
+            # print(self._addr_type, bytes(self._addr))
             if addr_type == self._addr_type and addr == self._addr:
                 self._conn_handle = conn_handle
-                self._ble.gattc_discover_services(self._conn_handle)
+                print(self._ble.gattc_discover_services(self._conn_handle))
 
         elif event == _IRQ_PERIPHERAL_DISCONNECT:
             # Disconnect (either initiated by us or the remote end).
@@ -112,7 +117,7 @@ class BLESimpleCentral:
         elif event == _IRQ_GATTC_SERVICE_RESULT:
             # Connected device returned a service.
             conn_handle, start_handle, end_handle, uuid = data
-            print("service", data)
+            print("service", uuid)
             if conn_handle == self._conn_handle and uuid == _UART_SERVICE_UUID:
                 self._start_handle, self._end_handle = start_handle, end_handle
 
@@ -160,6 +165,11 @@ class BLESimpleCentral:
             and self._rx_handle is not None
         )
 
+    def pair(self):
+        if self._conn_handle is not None:
+            print("Pairing...")
+            self._ble.gap_pair(self._conn_handle, bond=1, mitm=0, lesc=1)
+    
     # Find a device advertising the environmental sensor service.
     def scan(self, callback=None):
         self._addr_type = None
@@ -174,6 +184,7 @@ class BLESimpleCentral:
         self._conn_callback = callback
         if self._addr_type is None or self._addr is None:
             return False
+        print("Conencting to", self._addr_type, self._addr)
         self._ble.gap_connect(self._addr_type, self._addr)
         return True
 
@@ -220,6 +231,8 @@ def demo():
 
     print("Connected")
 
+    central.pair();
+
     def on_rx(v):
         print("RX", v)
 
@@ -236,7 +249,7 @@ def demo():
         except:
             print("TX failed")
         i += 1
-        time.sleep_ms(400 if with_response else 30)
+        time.sleep_ms(400 if with_response else 3000)
 
     print("Disconnected")
 
