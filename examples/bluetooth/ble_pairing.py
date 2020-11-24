@@ -71,32 +71,32 @@ class BlePairing:
         bond_type = key['bond_type']
         if bond_type == BOND_TYPE_OUR_SEC:
             ks = BlePairing.KEYSTORE_OUR_SEC
-            keys = ('addr_type', 'addr', 'ediv', 'rand')
+            match = ('addr_type', 'addr', 'ediv', 'rand')
             fields = SEC_FIELDS
 
         elif bond_type == BOND_TYPE_PEER_SEC:
             ks = BlePairing.KEYSTORE_PEER_SEC
-            keys = ('addr_type', 'addr', 'ediv', 'rand')
+            match = ('addr_type', 'addr', 'ediv', 'rand')
             fields = SEC_FIELDS
 
         elif bond_type == BOND_TYPE_CCCD:
             ks = BlePairing.KEYSTORE_CCCD
-            keys = ('addr_type', 'addr', 'chr_val_handle')
+            match = ('addr_type', 'addr', 'chr_val_handle')
             fields = CCCD_FIELDS
 
         else:
             raise ValueError("Unknown bond type: %s" % bond_type)
 
         ret = None
+        search = tuple((key[k] for k in match))
         for entry in ks:
             if key.get('skip'):
                 key['skip'] -= 1
                 continue
-            for k in keys:
-                if entry.get(k) != key.get(k):
-                    continue
-            ret = entry
-            break
+
+            if search == tuple((entry[k] for k in match)):
+                ret = entry
+                break
 
         if ret is not None:
             if delete:
@@ -109,7 +109,7 @@ class BlePairing:
             key = dict(zip(KEY_FIELDS, [bytes(d) if isinstance(d, memoryview) else d for d in data]))
             print_debug(key)
             found = self.find_key(key)
-            print_debug("SEC", found)
+            print_debug("FOUND", found)
             return found
 
         elif event == _IRQ_BOND_WRITE:
@@ -136,5 +136,5 @@ class BlePairing:
             key = dict(zip(KEY_FIELDS, [bytes(d) if isinstance(d, memoryview) else d for d in data]))
             print_debug(key)
             found = self.find_key(key, delete=True)
-            print_debug("SEC", found)
+            print_debug("FOUND", found)
             return found
