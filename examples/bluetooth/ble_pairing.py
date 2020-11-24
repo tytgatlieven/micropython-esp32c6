@@ -129,6 +129,7 @@ class BlePairing:
             details = dict(zip(fields, [bytes(d) if isinstance(d, memoryview) else d for d in data]))
             print_debug(details)
             ks.append(details)
+            print("BLE: Writing bond key")
             schedule(self.write_store, None)
 
         elif event == _IRQ_BOND_DELETE:
@@ -137,4 +138,7 @@ class BlePairing:
             print_debug(key)
             found = self.find_key(key, delete=True)
             print_debug("FOUND", found)
+            if found:
+                print("BLE: Deleting old bond")
+                schedule(self.write_store, None)
             return found
