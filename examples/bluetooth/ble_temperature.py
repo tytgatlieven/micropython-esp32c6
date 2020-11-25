@@ -8,6 +8,7 @@ import random
 import struct
 import time
 from ble_advertising import advertising_payload
+from ble_pairing import BlePairing
 
 from micropython import const
 
@@ -43,11 +44,7 @@ _ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
 class BLETemperature:
     def __init__(self, ble, name="mpy-temp"):
         self._ble = ble
-        self._secrets = {
-            (2, b'\x00\xff\xcd\x9e6N@'): b'\x00\xff\xcd\x9e6N@\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc2f\xcfB\x0c\xd7\xfb\x17S\xbf"\x1eO\xeb\xcdf\x01\x16\xfc\xe9\xd190\x84y\xb4\x1d\x05\xa6\xb1LJo\x01E\x02\x17RT\x1a6x\xd5\x10Q\x9f@\xd4\x94\xa7\x05\x00\x00\x00\x00\x00',
-            (1, b'\x00\xff\xcd\x9e6N@'): b'\x00\xff\xcd\x9e6N@\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc2f\xcfB\x0c\xd7\xfb\x17S\xbf"\x1eO\xeb\xcdf\x01\xef\x8d\xe2\x16O\xecC\r\xbf[\xdd4\xc0S\x1e\xb8\x01kJ/\xea\xbf\x1e\x84\xc3B\xb5M*\xb1&4h\x05\x00\x00\x00\x00\x00'
-        }
-
+        self._pairing = BlePairing("keystore.json")
         self._ble.irq(self._irq)
         self._ble.config(bond=True)
         self._ble.active(True)
@@ -71,30 +68,8 @@ class BLETemperature:
             self._advertise()
         elif event == _IRQ_GATTS_INDICATE_DONE:
             conn_handle, value_handle, status = data
-        elif event == _IRQ_SET_SECRET:
-            sec_type, key, value = data
-            print('set secret:', sec_type, bytes(key), bytes(value) if value else None)
-            if value is None:
-                if (sec_type, bytes(key)) in self._secrets:
-                    del self._secrets[sec_type, bytes(key)]
-                    return True
-                else:
-                    return False
-            else:
-                self._secrets[sec_type, bytes(key)] = bytes(value)
-            return True
-        elif event == _IRQ_GET_SECRET:
-            sec_type, index, key = data
-            print('get secret:', sec_type, index, bytes(key) if key else None)
-            i = 0
-            if key is None:
-                for (t, _key), value in self._secrets.items():
-                    if t == sec_type:
-                        if i == index:
-                            return value
-                return None
-            else:
-                return self._secrets.get((sec_type, bytes(key)), None)
+        else:
+            return self._pairing.irq(event, data)
 
     def set_temperature(self, temp_deg_c, notify=False, indicate=False):
         # Data is sint16 in degrees Celsius with a resolution of 0.01 degrees Celsius.
@@ -110,6 +85,7 @@ class BLETemperature:
                     self._ble.gatts_indicate(conn_handle, self._handle)
 
     def _advertise(self, interval_us=500000):
+        print("Start Advertising")
         self._ble.config(addr_mode=2)
         self._ble.gap_advertise(interval_us, adv_data=self._payload)
 
@@ -127,7 +103,7 @@ def demo():
         temp.set_temperature(t, notify=i == 0, indicate=False)
         # Random walk the temperature.
         t += random.uniform(-0.5, 0.5)
-        time.sleep_ms(1000)
+        time.sleep_ms(10000)
 
 
 if __name__ == "__main__":
