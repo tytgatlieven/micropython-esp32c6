@@ -20,7 +20,7 @@ CCCD_FIELDS = ('bond_type', 'addr_type', 'addr', 'chr_val_handle', 'flags', 'val
 
 def print_debug(*args):
     """ verbose logging """
-    # print(*args)
+    print(*args)
 
 
 class BlePairing:
@@ -29,7 +29,7 @@ class BlePairing:
     KEYSTORE_CCCD = []
 
     def __init__(self, filename):
-        self.store = filename
+        self.store = str(filename)
         self.read_store()
 
     @staticmethod
@@ -53,6 +53,7 @@ class BlePairing:
                 'KEYSTORE_PEER_SEC': self._bytes_to_str(BlePairing.KEYSTORE_PEER_SEC),
                 'KEYSTORE_CCCD': self._bytes_to_str(BlePairing.KEYSTORE_CCCD),
             }, f)
+        self.print_store()
 
     def read_store(self):
         try:
@@ -61,27 +62,43 @@ class BlePairing:
                 BlePairing.KEYSTORE_OUR_SEC = self._str_to_bytes(keystore['KEYSTORE_OUR_SEC'])
                 BlePairing.KEYSTORE_PEER_SEC = self._str_to_bytes(keystore['KEYSTORE_PEER_SEC'])
                 BlePairing.KEYSTORE_CCCD = self._str_to_bytes(keystore['KEYSTORE_CCCD'])
-        except (ValueError, AttributeError):
-            print("format error in %s, not loaded" % self.store)
+            self.print_store()
+        except (ValueError, AttributeError, KeyError) as ex:
+            print("BLE Pairing: error in %s (%s), not loaded" % (self.store, ex))
         except OSError:
+            # Likely file doesn't exist yet
             pass
+
+    def print_store(self):
+        print_debug("********")
+        print_debug('KEYSTORE_OUR_SEC:', ",\n  ".join(str(BlePairing.KEYSTORE_OUR_SEC).split(',')))
+        print_debug('KEYSTORE_PEER_SEC:', ",\n  ".join(str(BlePairing.KEYSTORE_PEER_SEC).split(',')))
+        print_debug('KEYSTORE_CCCD:', ",\n  ".join(str(BlePairing.KEYSTORE_CCCD).split(',')))
+        print_debug("********")
 
     @staticmethod
     def find_key(key, delete=False):
         bond_type = key['bond_type']
+        ignore_addr = key['addr_type'] == 0 and key['addr'] == b'\x00\x00\x00\x00\x00\x00'
+        ediv_rand_present = None in (key.get('ediv'), key.get('rand'))
+
         if bond_type == BOND_TYPE_OUR_SEC:
             ks = BlePairing.KEYSTORE_OUR_SEC
-            match = ('addr_type', 'addr', 'ediv', 'rand')
+            match = [] if ignore_addr else ['addr_type', 'addr']
+            if ediv_rand_present:
+                match.extend(['ediv', 'rand'])
             fields = SEC_FIELDS
 
         elif bond_type == BOND_TYPE_PEER_SEC:
             ks = BlePairing.KEYSTORE_PEER_SEC
-            match = ('addr_type', 'addr', 'ediv', 'rand')
+            match = [] if ignore_addr else ['addr_type', 'addr']
+            if ediv_rand_present:
+                match.extend(['ediv', 'rand'])
             fields = SEC_FIELDS
 
         elif bond_type == BOND_TYPE_CCCD:
             ks = BlePairing.KEYSTORE_CCCD
-            match = ('addr_type', 'addr', 'chr_val_handle')
+            match = ['chr_val_handle'] if ignore_addr else ['addr_type', 'addr', 'chr_val_handle']
             fields = CCCD_FIELDS
 
         else:
@@ -89,19 +106,25 @@ class BlePairing:
 
         ret = None
         search = tuple((key[k] for k in match))
+        
+        skipped = 0
         for entry in ks:
-            if key.get('skip'):
-                key['skip'] -= 1
+            if search != tuple((entry[k] for k in match)):
                 continue
 
-            if search == tuple((entry[k] for k in match)):
-                ret = entry
-                break
+            if key.get('skip', 0) > skipped:
+                skipped += 1
+                continue
+            ret = entry
+            break
 
         if ret is not None:
             if delete:
                 ks.remove(ret)
+            print_debug("FOUND", ret)
             return tuple((ret[k] for k in fields[1:]))
+        print_debug("NOT FOUND IN", ks)
+        
 
     def irq(self, event, data):
         if event == _IRQ_BOND_READ:
@@ -109,7 +132,6 @@ class BlePairing:
             key = dict(zip(KEY_FIELDS, [bytes(d) if isinstance(d, memoryview) else d for d in data]))
             print_debug(key)
             found = self.find_key(key)
-            print_debug("FOUND", found)
             return found
 
         elif event == _IRQ_BOND_WRITE:
@@ -128,6 +150,7 @@ class BlePairing:
                 raise ValueError("Unknown bond type: %s" % bond_type)
             details = dict(zip(fields, [bytes(d) if isinstance(d, memoryview) else d for d in data]))
             print_debug(details)
+            self.find_key(details, delete=True)  # remove any existing key for same peer
             ks.append(details)
             print("BLE: Writing bond key")
             schedule(self.write_store, None)
@@ -137,7 +160,6 @@ class BlePairing:
             key = dict(zip(KEY_FIELDS, [bytes(d) if isinstance(d, memoryview) else d for d in data]))
             print_debug(key)
             found = self.find_key(key, delete=True)
-            print_debug("FOUND", found)
             if found:
                 print("BLE: Deleting old bond")
                 schedule(self.write_store, None)

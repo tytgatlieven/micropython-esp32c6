@@ -15,10 +15,12 @@ _IRQ_CENTRAL_DISCONNECT = const(2)
 _IRQ_GATTS_WRITE = const(3)
 _IRQ_GATTS_ENC_UPDATE = const(28)
 
+flag_read_enc = 0x0200
+
 _UART_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
 _UART_TX = (
     bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"),
-    bluetooth.FLAG_READ | bluetooth.FLAG_NOTIFY,
+    bluetooth.FLAG_READ | bluetooth.FLAG_NOTIFY | flag_read_enc,
 )
 _UART_RX = (
     bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"),
@@ -33,14 +35,15 @@ _UART_SERVICE = (
 class BLESimplePeripheral:
     def __init__(self, ble, name="mpy-uart"):
         self._ble = ble
-        self._ble.active(True)
+        self._pairing = BlePairing("keystore.json")
         self._ble.irq(self._irq)
+        self._ble.active(True)
+        print("mac:", self._ble.config('mac'))
         ((self._handle_tx, self._handle_rx),) = self._ble.gatts_register_services((_UART_SERVICE,))
         self._connections = set()
         self._write_callback = None
         self._payload = advertising_payload(name=name, services=[_UART_UUID])
         self._advertise()
-        self._pairing = BlePairing("keystore.json")
 
     def _irq(self, event, data):
         # Track connections so we can send notifications.
