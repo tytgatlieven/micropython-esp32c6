@@ -123,9 +123,9 @@ int nimble_sprintf(char *str, const char *fmt, ...);
 #define MYNEWT_VAL_BLE_SM_MAX_PROCS (1)
 #define MYNEWT_VAL_BLE_SM_MITM (0)
 #define MYNEWT_VAL_BLE_SM_OOB_DATA_FLAG (0)
-#define MYNEWT_VAL_BLE_SM_OUR_KEY_DIST (0)
+#define MYNEWT_VAL_BLE_SM_OUR_KEY_DIST (7)
 #define MYNEWT_VAL_BLE_SM_SC (1)
-#define MYNEWT_VAL_BLE_SM_THEIR_KEY_DIST (0)
+#define MYNEWT_VAL_BLE_SM_THEIR_KEY_DIST (7)
 #define MYNEWT_VAL_BLE_STORE_MAX_BONDS (3)
 #define MYNEWT_VAL_BLE_STORE_MAX_CCCDS (8)
 
