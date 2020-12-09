@@ -60,6 +60,8 @@ STATIC uint8_t nimble_address_mode = BLE_OWN_ADDR_RANDOM;
 
 #define NIMBLE_STARTUP_TIMEOUT 2000
 
+void ble_store_ram_init(void);
+
 // Any BLE_HS_xxx code not in this table will default to MP_EIO.
 STATIC int8_t ble_hs_err_to_errno_table[] = {
     [BLE_HS_EAGAIN] = MP_EAGAIN,
@@ -189,6 +191,7 @@ STATIC void set_random_address(bool nrpa) {
     assert(rc == 0);
     rc = ble_hs_util_ensure_addr(1);
     assert(rc == 0);
+    
 }
 
 #if MICROPY_PY_BLUETOOTH_ENABLE_PAIRING_BONDING
@@ -507,6 +510,9 @@ int mp_bluetooth_init(void) {
     ble_hs_cfg.sync_cb = sync_cb;
     ble_hs_cfg.gatts_register_cb = gatts_register_cb;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+    #if MICROPY_PY_BLUETOOTH_ENABLE_PAIRING_BONDING
+    ble_store_ram_init();
+    #endif
 
     MP_STATE_PORT(bluetooth_nimble_root_pointers) = m_new0(mp_bluetooth_nimble_root_pointers_t, 1);
     mp_bluetooth_gatts_db_create(&MP_STATE_PORT(bluetooth_nimble_root_pointers)->gatts_db);
@@ -646,6 +652,10 @@ void mp_bluetooth_set_address_mode(uint8_t addr_mode) {
         case MP_BLUETOOTH_ADDRESS_MODE_RPA:
             if (has_public_address()) {
                 nimble_address_mode = BLE_OWN_ADDR_RPA_PUBLIC_DEFAULT;
+                int rc = ble_hs_id_use_addr(nimble_address_mode);
+                if (rc != 0) {
+                    mp_raise_OSError(rc);
+                }
             } else {
                 // Generate an static random address to use as the identity address.
                 set_random_address(false);
