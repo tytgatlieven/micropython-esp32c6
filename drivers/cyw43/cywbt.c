@@ -35,8 +35,10 @@
 
 #if MICROPY_PY_NETWORK_CYW43
 
-extern const char fw_4343WA1_7_45_98_50_start;
-#define CYWBT_FW_ADDR (&fw_4343WA1_7_45_98_50_start + 749 * 512 + 29 * 256)
+// extern const char fw_4343WA1_7_45_98_50_start;
+// #define CYWBT_FW_ADDR (&fw_4343WA1_7_45_98_50_start + 749 * 512 + 29 * 256)
+#include "BCM4343A1_001.002.009.0093.0395.1DX.h"
+#define CYWBT_FW_ADDR (BCM4343A1_001_002_009_0093_0395_1DX_hcd)
 
 // Provided by the port.
 extern pyb_uart_obj_t mp_bluetooth_hci_uart_obj;
