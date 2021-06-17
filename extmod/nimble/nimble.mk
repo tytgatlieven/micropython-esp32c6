@@ -117,4 +117,23 @@ $(BUILD)/$(NIMBLE_LIB_DIR)/%.o: CFLAGS += -Wno-maybe-uninitialized -Wno-pointer-
 
 endif
 
+# The bttester app/module is used to automate Bluetooth Compliance Testing
+ifeq ($(MICROPY_BLUETOOTH_NIMBLE_BTTESTER),1)
+
+CFLAGS_MOD += -DMICROPY_BLUETOOTH_NIMBLE_BTTESTER=1
+
+LIB_SRC_C += $(addprefix $(NIMBLE_LIB_DIR)/, \
+	$(addprefix apps/bttester/src/, \
+		bttester.c \
+		gap.c \
+		gatt.c \
+		glue.c \
+		l2cap.c \
+		mesh.c \
+		) \
+	)
+
+INC += -I$(TOP)/$(NIMBLE_LIB_DIR)/apps/bttester/src
+endif
+
 endif
