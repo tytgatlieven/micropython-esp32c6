@@ -146,6 +146,9 @@
 #define MICROPY_ERROR_PRINTER       (&mp_stderr_print)
 #define MICROPY_WARNINGS            (1)
 #define MICROPY_PY_STR_BYTES_CMP_WARN (1)
+#ifndef MICROPY_ENABLE_SCHEDULER
+#define MICROPY_ENABLE_SCHEDULER    (1)
+#endif
 
 // VFS stat functions should return time values relative to 1970/1/1
 #define MICROPY_EPOCH_IS_1970       (1)
