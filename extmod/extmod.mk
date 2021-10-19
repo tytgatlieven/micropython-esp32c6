@@ -42,6 +42,18 @@ $(BUILD)/$(LITTLEFS_DIR)/lfs2.o: CFLAGS += -Wno-missing-field-initializers
 endif
 
 ################################################################################
+# VFS tar
+
+TAR_DIR = lib/microtar
+
+ifeq ($(MICROPY_VFS_TAR),1)
+CFLAGS_MOD += -DMICROPY_VFS_TAR=1
+SRC_MOD += $(addprefix $(TAR_DIR)/,\
+	microtar.c \
+	)
+endif
+
+################################################################################
 # ussl
 
 ifeq ($(MICROPY_PY_USSL),1)
