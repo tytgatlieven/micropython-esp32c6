@@ -344,8 +344,12 @@ $(BUILD)/lib/libffi/include/ffi.h: $(TOP)/lib/libffi/configure
 axtls: $(TOP)/lib/axtls/README
 
 $(TOP)/lib/axtls/README:
-	@echo "You cloned without --recursive, fetching submodules for you."
-	(cd $(TOP); git submodule update --init --recursive)
+	@echo "Fetching submodules..."
+	$(MAKE) submodules
+
+$(TOP)/lib/libffi/autogen.sh:
+	@echo "Fetching submodules..."
+	$(MAKE) submodules
 
 PREFIX = /usr/local
 BINDIR = $(DESTDIR)$(PREFIX)/bin
