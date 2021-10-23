@@ -60,12 +60,13 @@ STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_k
 
 STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    int res = mtar_read_data(&self->tar, buf, size);
+    size_t read_size = MIN(size, self->tar.remaining_data);
+    int res = mtar_read_data(&self->tar, buf, read_size);
     if (res != MTAR_ESUCCESS) {
         *errcode = mtar_e_to_errno_table[-res];
         return MP_STREAM_ERROR;
     }
-    return size;
+    return read_size;
 }
 
 STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
@@ -103,18 +104,21 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
         switch (s->whence) {
             case 0: // SEEK_SET
                 mtar_seek(&self->tar, s->offset);
+                self->tar.remaining_data = self->header.size - s->offset;
                 break;
 
             case 1: // SEEK_CUR
-                mtar_seek(&self->tar, self->tar.pos + s->offset);
+                // mtar_seek(&self->tar, self->tar.pos + s->offset);
+                self->tar.remaining_data = self->tar.remaining_data - s->offset;
                 break;
 
             case 2: // SEEK_END
-                mtar_seek(&self->tar, self->header.size + s->offset);
+                // mtar_seek(&self->tar, self->header.size + s->offset);
+                self->tar.remaining_data = - s->offset;
                 break;
         }
 
-        s->offset = self->tar.pos;
+        s->offset = self->header.size - self->tar.remaining_data;
         return 0;
 
     // } else if (request == MP_STREAM_FLUSH) {
@@ -186,6 +190,9 @@ STATIC mp_obj_t file_open(fs_tar_user_mount_t *vfs, const mp_obj_type_t *type, m
     o->base.type = type;
 
     const char *fname = mp_obj_str_get_str(args[0].u_obj);
+    if (fname[0] == '/') {
+        fname += 1;
+    }
     assert(vfs != NULL);
     memcpy(&o->tar, &vfs->tar, sizeof(vfs->tar));
     int res = mtar_find(&o->tar, fname, &o->header);
@@ -193,12 +200,12 @@ STATIC mp_obj_t file_open(fs_tar_user_mount_t *vfs, const mp_obj_type_t *type, m
         m_del_obj(pyb_file_obj_t, o);
         mp_raise_OSError(mtar_e_to_errno_table[-res]);
     }
-
-    // // for 'a' mode, we must begin at the end of the file
-    // if ((mode & FA_OPEN_ALWAYS) != 0) {
-    //     mtar_seek(&o->tar, &o->header.size));
-    // }
-
+    res = mtar_read_data(&o->tar, NULL, 0);
+    if (res != MTAR_ESUCCESS) {
+        // *errcode = mtar_e_to_errno_table[-res];
+        mp_raise_OSError(mtar_e_to_errno_table[-res]);
+        // return MP_STREAM_ERROR;
+    }
     return MP_OBJ_FROM_PTR(o);
 }
 

@@ -43,6 +43,9 @@
 STATIC mp_import_stat_t tar_vfs_import_stat(void *vfs_in, const char *path) {
     fs_tar_user_mount_t *vfs = vfs_in;
     mtar_header_t header;
+    if (path[0] == '/') {
+        path += 1;
+    }
     assert(vfs != NULL);
     int res = mtar_find(&vfs->tar, path, &header);
     if (res == MTAR_ESUCCESS) {
@@ -246,13 +249,10 @@ STATIC mp_obj_t tar_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) {
     } else {
         path = "";
     }
-    const char *rpath = (path[0] == '/')? &path[1] : path;
-
-    // FRESULT res = f_opendir(&self->tar, &iter->dir, path);
-    // if (res != FR_OK) {
-    //     mp_raise_OSError(mtar_e_to_errno_table[-res]);
-    // }
-
+    if (path[0] == '/') {
+        // tar file doesn't have leading slash in paths
+        path += 1;
+    }
     // Create a new iterator object to list the dir
     mp_vfs_tar_ilistdir_it_t *iter = m_new_obj(mp_vfs_tar_ilistdir_it_t);
     memset(iter, 0, sizeof(mp_vfs_tar_ilistdir_it_t));
@@ -260,13 +260,13 @@ STATIC mp_obj_t tar_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) {
     iter->iternext = mp_vfs_tar_ilistdir_it_iternext;
     iter->is_str = is_str_type;
 
-    if (rpath[0] == 0) {
+    if (path[0] == 0) {
         int res = mtar_rewind(&self->tar);
         if (res) {
             mp_raise_OSError(mtar_e_to_errno_table[-res]);
         }
     } else {
-        int res = mtar_find(&self->tar, rpath, &iter->dir);
+        int res = mtar_find(&self->tar, path, &iter->dir);
         if (res != MTAR_ESUCCESS) {
             mp_raise_OSError(mtar_e_to_errno_table[-res]);
         }
@@ -277,9 +277,9 @@ STATIC mp_obj_t tar_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) {
     }
     memcpy(&iter->tar, &self->tar, sizeof(iter->tar));
 
-    size_t slen = strlen(rpath);
+    size_t slen = strlen(path);
     if (slen != 0) {
-        strncpy(iter->path, rpath, sizeof(iter->path)-2);
+        strncpy(iter->path, path, sizeof(iter->path)-2);
         if (iter->path[slen-1] != '/') {
             iter->path[slen] = '/';
             iter->path[slen+1] = 0;
@@ -333,7 +333,7 @@ STATIC mp_obj_t tar_vfs_chdir(mp_obj_t vfs_in, mp_obj_t path_in) {
     const char *path = mp_obj_str_get_str(path_in);
 
     if (path[0] == '/') {
-        fullpath = path;
+        fullpath = &path[1];
     } else {
         int i;
         strncpy(buf, self->cwd, MICROPY_ALLOC_PATH_MAX);
@@ -341,8 +341,14 @@ STATIC mp_obj_t tar_vfs_chdir(mp_obj_t vfs_in, mp_obj_t path_in) {
         if (i + strlen(path) + 2 > MICROPY_ALLOC_PATH_MAX) {
             mp_raise_OSError(MP_ENOMEM);
         }
-        buf[i] = '/';
-        strncpy(&buf[i+1], path, MICROPY_ALLOC_PATH_MAX-i-1);
+        if (i && buf[i-1] != '/') {
+            buf[i] = '/';
+            i += 1;
+        }
+        if (path[0] == '.' && path[1] == '/') {
+            path = path+2;
+        }
+        strncpy(&buf[i], path, MICROPY_ALLOC_PATH_MAX-i-1);
         fullpath = buf;
     }
     printf("vfs_tar: chdir(%s)\n", fullpath);
@@ -355,6 +361,7 @@ STATIC mp_obj_t tar_vfs_chdir(mp_obj_t vfs_in, mp_obj_t path_in) {
     } else {
         mp_raise_OSError(MP_ENOENT);
     }
+    strncpy(self->cwd, fullpath, MICROPY_ALLOC_PATH_MAX-1);
         
     return mp_const_none;
 }
@@ -382,6 +389,10 @@ STATIC mp_obj_t tar_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
         attrib = MTAR_TDIR;
     } else {
         mtar_header_t header;
+        if (path[0] == '/') {
+            // tar file doesn't have leading slash in paths
+            path += 1;
+        }
         int res = mtar_find(&self->tar, path, &header);
         if (res != MTAR_ESUCCESS) {
             mp_raise_OSError(mtar_e_to_errno_table[-res]);
