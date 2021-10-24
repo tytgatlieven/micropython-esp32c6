@@ -35,13 +35,11 @@ typedef struct _fs_tar_user_mount_t {
     mp_obj_base_t base;
     mp_vfs_blockdev_t blockdev;
     mtar_t tar;
-    size_t block;
-    size_t offset;
     char cwd[1024/*MICROPY_ALLOC_PATH_MAX*/ + 1];
 } fs_tar_user_mount_t;
 
 extern const byte mtar_e_to_errno_table[9];
-extern const mp_obj_type_t mp_tar_vfs_type;
+extern const mp_obj_type_t mp_type_vfs_tar;
 extern const mp_obj_type_t mp_type_vfs_tar_fileio;
 extern const mp_obj_type_t mp_type_vfs_tar_textio;
 

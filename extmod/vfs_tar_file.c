@@ -28,6 +28,7 @@
 #if MICROPY_VFS && MICROPY_VFS_TAR
 
 #include <stdio.h>
+#include <string.h>
 
 #include "py/runtime.h"
 #include "py/stream.h"

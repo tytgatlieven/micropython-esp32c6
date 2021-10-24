@@ -84,7 +84,7 @@ STATIC const mp_rom_map_elem_t uos_vfs_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_VfsLfs2), MP_ROM_PTR(&mp_type_vfs_lfs2) },
     #endif
     #if MICROPY_VFS_TAR
-    { MP_ROM_QSTR(MP_QSTR_VfsTar), MP_ROM_PTR(&mp_tar_vfs_type) },
+    { MP_ROM_QSTR(MP_QSTR_VfsTar), MP_ROM_PTR(&mp_type_vfs_tar) },
     #endif
 
 };

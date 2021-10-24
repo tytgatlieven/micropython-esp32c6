@@ -3,7 +3,6 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Damien P. George
  * Copyright (c) 2021 Andrew Leech
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,12 +37,14 @@
 #include "extmod/vfs_tar.h"
 #include "shared/timeutils/timeutils.h"
 
+#define PATH_SEP_CHAR '/'
+
 #define mp_obj_tar_vfs_t fs_tar_user_mount_t
 
 STATIC mp_import_stat_t tar_vfs_import_stat(void *vfs_in, const char *path) {
     fs_tar_user_mount_t *vfs = vfs_in;
     mtar_header_t header;
-    if (path[0] == '/') {
+    if (path[0] == PATH_SEP_CHAR) {
         path += 1;
     }
     assert(vfs != NULL);
@@ -62,20 +63,12 @@ static void raise_error_read_only() {
     mp_raise_NotImplementedError(MP_ERROR_TEXT("vfs_tar is read only"));
 }
 
-static void _update_position(fs_tar_user_mount_t *vfs, size_t size) {
-    vfs->block += size / vfs->blockdev.block_size;
-    vfs->offset += size % vfs->blockdev.block_size;
-    if (vfs->offset >= vfs->blockdev.block_size) {
-        vfs->offset -= vfs->blockdev.block_size;
-        vfs->block += 1;
-    }
-}
-
 static int block_write(mtar_t *tar, const void *data, unsigned size) {
   fs_tar_user_mount_t *vfs = (fs_tar_user_mount_t *)tar->stream;
-  int res = mp_vfs_blockdev_write_ext(&vfs->blockdev, vfs->block, vfs->offset, size, data);
+  size_t block = tar->pos / vfs->blockdev.block_size;
+  size_t offset = tar->pos % vfs->blockdev.block_size;
+  int res = mp_vfs_blockdev_write_ext(&vfs->blockdev, block, offset, size, data);
   if (res == 0) {
-    _update_position(vfs, size);
     return MTAR_ESUCCESS;
   }
   return MTAR_EWRITEFAIL;
@@ -83,26 +76,23 @@ static int block_write(mtar_t *tar, const void *data, unsigned size) {
 
 static int block_read(mtar_t *tar, void *data, unsigned size) {
   fs_tar_user_mount_t *vfs = (fs_tar_user_mount_t *)tar->stream;
-  int res = mp_vfs_blockdev_read_ext(&vfs->blockdev, vfs->block, vfs->offset, size, data);
+  size_t block = tar->pos / vfs->blockdev.block_size;
+  size_t offset = tar->pos % vfs->blockdev.block_size;
+  int res = mp_vfs_blockdev_read_ext(&vfs->blockdev, block, offset, size, data);
   if (res == 0) {
-    _update_position(vfs, size);
     return MTAR_ESUCCESS;
   }
   return MTAR_EREADFAIL;
 }
 
 static int block_seek(mtar_t *tar, unsigned offset) {
-  fs_tar_user_mount_t *vfs = (fs_tar_user_mount_t *)tar->stream;
-  vfs->block = 0;
-  vfs->offset = 0;
-  _update_position(vfs, offset);
+  (void)offset;
+  (void)tar;
   return MTAR_ESUCCESS;
 }
 
 static int block_close(mtar_t *tar) {
     (void)tar;
-//   fs_tar_user_mount_t *mount = (fs_tar_user_mount_t *)tar->stream;
-//   fclose(tar->stream);
   return MTAR_ESUCCESS;
 }
 
@@ -118,7 +108,6 @@ STATIC mp_obj_t tar_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_
 
     // Initialise underlying block device
     vfs->blockdev.flags = MP_BLOCKDEV_FLAG_FREE_OBJ;
-    // vfs->blockdev.block_size = FF_MIN_SS; // default, will be populated by call to MP_BLOCKDEV_IOCTL_BLOCK_SIZE
     mp_vfs_blockdev_init(&vfs->blockdev, args[0]);
     mp_obj_t bsize = mp_vfs_blockdev_ioctl(&vfs->blockdev, MP_BLOCKDEV_IOCTL_BLOCK_SIZE, 0);
     if (mp_obj_is_small_int(bsize)) {
@@ -126,9 +115,6 @@ STATIC mp_obj_t tar_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_
     } else {
         vfs->blockdev.block_size = 512; 
     }
-
-    // mount the block device so the VFS methods can be used
-    // FRESULT res = f_mount(&vfs->tar);
 
     /* Init tar struct and functions */
     vfs->tar.write = block_write;
@@ -140,7 +126,6 @@ STATIC mp_obj_t tar_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_
     mtar_header_t h;
     int res = mtar_read_header(&vfs->tar, &h);
     if (res == MTAR_EOPENFAIL) {
-        // don't error out if no filesystem, to let mkfs()/mount() create one if wanted
         vfs->blockdev.flags |= MP_BLOCKDEV_FLAG_NO_FILESYSTEM;
     } else if (res != MTAR_ESUCCESS) {
         mp_raise_OSError(mtar_e_to_errno_table[-res]);
@@ -179,10 +164,6 @@ STATIC mp_obj_t mp_vfs_tar_ilistdir_it_iternext(mp_obj_t self_in) {
     mp_vfs_tar_ilistdir_it_t *self = MP_OBJ_TO_PTR(self_in);
 
     for (;;) {
-        // int res = mtar_next(&self->tar);
-        // if (res != MTAR_ESUCCESS) {
-        //     break;
-        // }
         /* Load header */
         mtar_header_t h;
         int res = mtar_read_header(&self->tar, &h);
@@ -230,10 +211,6 @@ STATIC mp_obj_t mp_vfs_tar_ilistdir_it_iternext(mp_obj_t self_in) {
 
         return MP_OBJ_FROM_PTR(t);
     }
-
-    // ignore error because we may be closing a second time
-    // f_closedir(&self->dir);
-
     return MP_OBJ_STOP_ITERATION;
 }
 
@@ -249,7 +226,7 @@ STATIC mp_obj_t tar_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) {
     } else {
         path = "";
     }
-    if (path[0] == '/') {
+    if (path[0] == PATH_SEP_CHAR) {
         // tar file doesn't have leading slash in paths
         path += 1;
     }
@@ -280,8 +257,8 @@ STATIC mp_obj_t tar_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) {
     size_t slen = strlen(path);
     if (slen != 0) {
         strncpy(iter->path, path, sizeof(iter->path)-2);
-        if (iter->path[slen-1] != '/') {
-            iter->path[slen] = '/';
+        if (iter->path[slen-1] != PATH_SEP_CHAR) {
+            iter->path[slen] = PATH_SEP_CHAR;
             iter->path[slen+1] = 0;
         }
     }
@@ -327,33 +304,31 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(tar_vfs_mkdir_obj, tar_vfs_mkdir);
 // Change current directory.
 STATIC mp_obj_t tar_vfs_chdir(mp_obj_t vfs_in, mp_obj_t path_in) {
     mp_obj_tar_vfs_t *self = MP_OBJ_TO_PTR(vfs_in);
-    char buf[MICROPY_ALLOC_PATH_MAX + 1];
+    VSTR_FIXED(path, MICROPY_ALLOC_PATH_MAX);
     mtar_header_t header;
-    const char *fullpath;
-    const char *path = mp_obj_str_get_str(path_in);
+    const char *cpath = mp_obj_str_get_str(path_in);
+    size_t cpath_len = strlen(cpath);
 
-    if (path[0] == '/') {
-        fullpath = &path[1];
+    if (cpath[0] == PATH_SEP_CHAR) {
+        vstr_add_strn(&path, &cpath[1], cpath_len-1);
     } else {
-        int i;
-        strncpy(buf, self->cwd, MICROPY_ALLOC_PATH_MAX);
-        i = strlen(buf);
-        if (i + strlen(path) + 2 > MICROPY_ALLOC_PATH_MAX) {
-            mp_raise_OSError(MP_ENOMEM);
+        size_t cwd_len = strlen(self->cwd);
+        if (cwd_len) {
+            vstr_add_strn(&path, self->cwd, cwd_len);
+            if (self->cwd[cwd_len-1] != PATH_SEP_CHAR) {
+                vstr_add_char(&path, PATH_SEP_CHAR);
+            }
         }
-        if (i && buf[i-1] != '/') {
-            buf[i] = '/';
-            i += 1;
+        if (path.len && path.buf[path.len-1] != PATH_SEP_CHAR) {
+            vstr_add_char(&path, PATH_SEP_CHAR);
         }
-        if (path[0] == '.' && path[1] == '/') {
-            path = path+2;
+        if (cpath_len >= 2 && cpath[0] == '.' && cpath[1] == PATH_SEP_CHAR) {
+            cpath = &cpath[2];
+            cpath_len -= 2;
         }
-        strncpy(&buf[i], path, MICROPY_ALLOC_PATH_MAX-i-1);
-        fullpath = buf;
+        vstr_add_strn(&path, cpath, cpath_len);
     }
-    printf("vfs_tar: chdir(%s)\n", fullpath);
-    
-    int res = mtar_find(&self->tar, fullpath, &header);
+    int res = mtar_find(&self->tar, vstr_str(&path), &header);
     if (res == MTAR_ESUCCESS) {
         if (header.type != MTAR_TDIR) {
             mp_raise_OSError(MP_EACCES);
@@ -361,7 +336,7 @@ STATIC mp_obj_t tar_vfs_chdir(mp_obj_t vfs_in, mp_obj_t path_in) {
     } else {
         mp_raise_OSError(MP_ENOENT);
     }
-    strncpy(self->cwd, fullpath, MICROPY_ALLOC_PATH_MAX-1);
+    strncpy(self->cwd, vstr_str(&path), vstr_len(&path));
         
     return mp_const_none;
 }
@@ -383,13 +358,13 @@ STATIC mp_obj_t tar_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
     uint8_t attrib;
     mp_int_t seconds = 0;
 
-    if (path[0] == 0 || (path[0] == '/' && path[1] == 0)) {
+    if (path[0] == 0 || (path[0] == PATH_SEP_CHAR && path[1] == 0)) {
         // stat root directory
         fsize = 0;
         attrib = MTAR_TDIR;
     } else {
         mtar_header_t header;
-        if (path[0] == '/') {
+        if (path[0] == PATH_SEP_CHAR) {
             // tar file doesn't have leading slash in paths
             path += 1;
         }
@@ -509,7 +484,7 @@ STATIC const mp_vfs_proto_t tar_vfs_proto = {
     .import_stat = tar_vfs_import_stat,
 };
 
-const mp_obj_type_t mp_tar_vfs_type = {
+const mp_obj_type_t mp_type_vfs_tar = {
     { &mp_type_type },
     .name = MP_QSTR_VfsTAR,
     .make_new = tar_vfs_make_new,

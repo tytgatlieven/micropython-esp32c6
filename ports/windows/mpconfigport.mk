@@ -10,3 +10,5 @@ MICROPY_USE_READLINE = 1
 
 # ffi module requires libffi (libffi-dev Debian package)
 MICROPY_PY_FFI = 0
+
+MICROPY_VFS_TAR = 1
