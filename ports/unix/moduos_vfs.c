@@ -32,6 +32,7 @@
 #include "extmod/vfs_fat.h"
 #include "extmod/vfs_lfs.h"
 #include "extmod/vfs_tar.h"
+#include "extmod/stream_blockdev.h"
 
 #if MICROPY_VFS
 
@@ -86,6 +87,10 @@ STATIC const mp_rom_map_elem_t uos_vfs_module_globals_table[] = {
     #if MICROPY_VFS_TAR
     { MP_ROM_QSTR(MP_QSTR_VfsTar), MP_ROM_PTR(&mp_type_vfs_tar) },
     #endif
+    #if MICROPY_STREAM_BLOCKDEV
+    { MP_ROM_QSTR(MP_QSTR_StreamBlockDevice), MP_ROM_PTR(&mpy_stream_bdev_type) },
+    #endif
+
 
 };
 

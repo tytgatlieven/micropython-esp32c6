@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2019 Damien P. George
+ * Copyright (c) 2021 Andrew Leech
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,25 +24,20 @@
  * THE SOFTWARE.
  */
 
-#define MICROPY_READER_VFS                      (1)
-#define MICROPY_REPL_EMACS_WORDS_MOVE           (1)
-#define MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE     (1)
-#define MICROPY_ENABLE_SCHEDULER                (1)
-#define MICROPY_VFS                             (1)
-#define MICROPY_VFS_POSIX                       (1)
-#define MICROPY_STREAM_BLOCKDEV     (1)
+#ifndef MICROPY_EXTMOD_STREAM_BLOCKDEV_H
+#define MICROPY_EXTMOD_STREAM_BLOCKDEV_H
+#include <stdint.h>
+#include "py/obj.h"
 
-#define MICROPY_PY_BUILTINS_HELP                (1)
-#define MICROPY_PY_BUILTINS_HELP_MODULES        (1)
-#define MICROPY_PY_SYS_SETTRACE                 (1)
-#define MICROPY_PY_UOS_VFS                      (1)
-#define MICROPY_PY_URANDOM_EXTRA_FUNCS          (1)
+typedef struct _mpy_stream_bdev_obj_t {
+    mp_obj_base_t base;
+    mp_obj_t stream;
+    uint32_t block_size;
+    uint32_t start; // in bytes
+    uint32_t len; // in bytes
+} mpy_stream_bdev_obj_t;
 
-#ifndef MICROPY_PY_UASYNCIO
-#define MICROPY_PY_UASYNCIO                     (1)
+extern const mp_obj_type_t mpy_stream_bdev_type;
+
+
 #endif
-
-// Use vfs's functions for import stat and builtin open.
-#define mp_import_stat mp_vfs_import_stat
-#define mp_builtin_open mp_vfs_open
-#define mp_builtin_open_obj mp_vfs_open_obj
