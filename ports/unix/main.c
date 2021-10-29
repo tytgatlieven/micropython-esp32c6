@@ -52,6 +52,8 @@
 #include "genhdr/mpversion.h"
 #include "input.h"
 
+extern int ReadFromExeFile(void);
+
 // Command line options, with their defaults
 STATIC bool compile_only = false;
 STATIC uint emit_opt = MP_EMIT_OPT_NONE;
@@ -511,13 +513,21 @@ MP_NOINLINE int main_(int argc, char **argv) {
             p++;
         }
     }
+    #if MICROPY_PY_FROZENIMG
+    path_num += 1;
+    #endif
+    
     mp_obj_list_init(MP_OBJ_TO_PTR(mp_sys_path), path_num);
     mp_obj_t *path_items;
     mp_obj_list_get(mp_sys_path, &path_num, &path_items);
-    path_items[0] = MP_OBJ_NEW_QSTR(MP_QSTR_);
+    mp_uint_t i = 0;
+    #if MICROPY_PY_FROZENIMG
+    path_items[i++] = mp_obj_new_str_via_qstr("/:", 2);
+    #endif
+    path_items[i++] = MP_OBJ_NEW_QSTR(MP_QSTR_);
     {
         char *p = path;
-        for (mp_uint_t i = 1; i < path_num; i++) {
+        for (i = i; i < path_num; i++) {
             char *p1 = strchr(p, PATHLIST_SEP_CHAR);
             if (p1 == NULL) {
                 p1 = p + strlen(p);
@@ -571,6 +581,15 @@ MP_NOINLINE int main_(int argc, char **argv) {
     const int NOTHING_EXECUTED = -2;
     int ret = NOTHING_EXECUTED;
     bool inspect = false;
+
+
+    #if MICROPY_PY_FROZENIMG
+    if (0 == ReadFromExeFile()) {
+        set_sys_argv(argv, argc, 0);
+        ret = do_file("/:/main.py");
+    } else {
+    #endif
+
     for (int a = 1; a < argc; a++) {
         if (argv[a][0] == '-') {
             if (strcmp(argv[a], "-i") == 0) {
@@ -668,6 +687,10 @@ MP_NOINLINE int main_(int argc, char **argv) {
             break;
         }
     }
+
+    #if MICROPY_PY_FROZENIMG
+    }
+    #endif
 
     const char *inspect_env = getenv("MICROPYINSPECT");
     if (inspect_env && inspect_env[0] != '\0') {

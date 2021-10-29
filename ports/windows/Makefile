@@ -42,6 +42,7 @@ SRC_C = \
 	init.c \
 	sleep.c \
 	fmode.c \
+	frozenimg.c \
 	$(SRC_MOD)
 
 OBJ = $(PY_O) $(addprefix $(BUILD)/, $(SRC_C:.c=.o))

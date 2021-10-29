@@ -31,6 +31,7 @@
 #define MICROPY_USE_READLINE        (1)
 #endif
 
+#define MICROPY_PY_FROZENIMG        (1)
 #define MICROPY_STREAM_BLOCKDEV     (1)
 #define MICROPY_ALLOC_PATH_MAX      (260) // see minwindef.h for msvc or limits.h for mingw
 #define MICROPY_PERSISTENT_CODE_LOAD (1)
