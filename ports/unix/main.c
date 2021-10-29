@@ -51,6 +51,7 @@
 #include "extmod/vfs_posix.h"
 #include "genhdr/mpversion.h"
 #include "input.h"
+#include "shared/runtime/pyexec.h"
 
 extern int ReadFromExeFile(void);
 

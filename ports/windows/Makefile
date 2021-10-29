@@ -30,6 +30,7 @@ endif
 SRC_C = \
 	shared/libc/printf.c \
 	shared/runtime/gchelper_generic.c \
+	shared/runtime/pyexec.c \
 	ports/unix/main.c \
 	ports/unix/input.c \
 	ports/unix/modos.c \
