@@ -254,7 +254,7 @@ STATIC mp_obj_t vfs_posix_mkdir(mp_obj_t self_in, mp_obj_t path_in) {
     mp_obj_vfs_posix_t *self = MP_OBJ_TO_PTR(self_in);
     const char *path = vfs_posix_get_path_str(self, path_in);
     MP_THREAD_GIL_EXIT();
-    int ret = mkdir(path, 0777);
+    int ret = mkdir(path);
     MP_THREAD_GIL_ENTER();
     if (ret != 0) {
         mp_raise_OSError(errno);
@@ -320,7 +320,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(vfs_posix_stat_obj, vfs_posix_stat);
 #define F_NAMEMAX sb.f_namelen
 #define F_FLAG sb.f_flags
 #else
-#include <sys/statvfs.h>
+// #include <statvfs.h>
 #define STRUCT_STATVFS struct statvfs
 #define STATVFS statvfs
 #define F_FAVAIL sb.f_favail
@@ -330,21 +330,22 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(vfs_posix_stat_obj, vfs_posix_stat);
 
 STATIC mp_obj_t vfs_posix_statvfs(mp_obj_t self_in, mp_obj_t path_in) {
     mp_obj_vfs_posix_t *self = MP_OBJ_TO_PTR(self_in);
-    STRUCT_STATVFS sb;
-    const char *path = vfs_posix_get_path_str(self, path_in);
-    int ret;
-    MP_HAL_RETRY_SYSCALL(ret, STATVFS(path, &sb), mp_raise_OSError(err));
+    (void)self;
+    // STRUCT_STATVFS sb;
+    // const char *path = vfs_posix_get_path_str(self, path_in);
+    // int ret;
+    // MP_HAL_RETRY_SYSCALL(ret, STATVFS(path, &sb), mp_raise_OSError(err));
     mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(10, NULL));
-    t->items[0] = MP_OBJ_NEW_SMALL_INT(sb.f_bsize);
-    t->items[1] = MP_OBJ_NEW_SMALL_INT(sb.f_frsize);
-    t->items[2] = MP_OBJ_NEW_SMALL_INT(sb.f_blocks);
-    t->items[3] = MP_OBJ_NEW_SMALL_INT(sb.f_bfree);
-    t->items[4] = MP_OBJ_NEW_SMALL_INT(sb.f_bavail);
-    t->items[5] = MP_OBJ_NEW_SMALL_INT(sb.f_files);
-    t->items[6] = MP_OBJ_NEW_SMALL_INT(sb.f_ffree);
-    t->items[7] = MP_OBJ_NEW_SMALL_INT(F_FAVAIL);
-    t->items[8] = MP_OBJ_NEW_SMALL_INT(F_FLAG);
-    t->items[9] = MP_OBJ_NEW_SMALL_INT(F_NAMEMAX);
+    t->items[0] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[1] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[2] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[3] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[4] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[5] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[6] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[7] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[8] = MP_OBJ_NEW_SMALL_INT(0);
+    t->items[9] = MP_OBJ_NEW_SMALL_INT(0);
     return MP_OBJ_FROM_PTR(t);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(vfs_posix_statvfs_obj, vfs_posix_statvfs);

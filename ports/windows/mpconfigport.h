@@ -62,6 +62,10 @@
 #define MICROPY_OPT_COMPUTED_GOTO   (0)
 #define MICROPY_MODULE_WEAK_LINKS   (1)
 #define MICROPY_CAN_OVERRIDE_BUILTINS (1)
+#define MICROPY_VFS                             (1)
+#define MICROPY_READER_VFS                      (1)
+#define MICROPY_PY_UOS_VFS                      (1)
+#define MICROPY_VFS_POSIX      (1)
 #define MICROPY_VFS_POSIX_FILE      (1)
 #define MICROPY_PY_FUNCTION_ATTRS   (1)
 #define MICROPY_PY_DESCRIPTORS      (1)
@@ -148,6 +152,12 @@ extern const struct _mp_print_t mp_stderr_print;
 #define MICROPY_PORT_INIT_FUNC      init()
 #define MICROPY_PORT_DEINIT_FUNC    deinit()
 
+
+// Use vfs's functions for import stat and builtin open.
+#define mp_import_stat mp_vfs_import_stat
+#define mp_builtin_open mp_vfs_open
+#define mp_builtin_open_obj mp_vfs_open_obj
+
 // type definitions for the specific machine
 
 #if defined(__MINGW32__) && defined(__LP64__)
@@ -186,10 +196,19 @@ typedef long mp_off_t;
 
 extern const struct _mp_obj_module_t mp_module_os;
 extern const struct _mp_obj_module_t mp_module_time;
+extern const struct _mp_obj_module_t mp_module_uos_vfs;
+
+#if MICROPY_PY_UOS_VFS
+#define MICROPY_PY_UOS_DEF { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_uos_vfs) },
+#else
+#define MICROPY_PY_UOS_DEF { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) },
+#endif
+
+
 #define MICROPY_PORT_BUILTIN_MODULES \
     { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&mp_module_time) }, \
     { MP_ROM_QSTR(MP_QSTR_umachine), MP_ROM_PTR(&mp_module_machine) }, \
-    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
+    MICROPY_PY_UOS_DEF \
 
 #if MICROPY_USE_READLINE == 1
 #define MICROPY_PORT_ROOT_POINTERS \

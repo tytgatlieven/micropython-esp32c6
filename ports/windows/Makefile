@@ -33,6 +33,7 @@ SRC_C = \
 	ports/unix/main.c \
 	ports/unix/input.c \
 	ports/unix/modos.c \
+	ports/unix/moduos_vfs.c \
 	ports/unix/modmachine.c \
 	ports/unix/modtime.c \
 	ports/unix/gccollect.c \
