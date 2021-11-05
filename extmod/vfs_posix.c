@@ -254,7 +254,11 @@ STATIC mp_obj_t vfs_posix_mkdir(mp_obj_t self_in, mp_obj_t path_in) {
     mp_obj_vfs_posix_t *self = MP_OBJ_TO_PTR(self_in);
     const char *path = vfs_posix_get_path_str(self, path_in);
     MP_THREAD_GIL_EXIT();
+    #ifdef _WIN32
     int ret = mkdir(path);
+    #else
+    int ret = mkdir(path, 0777);
+    #endif
     MP_THREAD_GIL_ENTER();
     if (ret != 0) {
         mp_raise_OSError(errno);
