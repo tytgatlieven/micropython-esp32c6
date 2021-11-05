@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2019 Damien P. George
+ * Copyright (c) 2021 Andrew Leech
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,28 +23,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_EXTMOD_VFS_ZIP_H
+#define MICROPY_INCLUDED_EXTMOD_VFS_ZIP_H
 
-#define MICROPY_READER_VFS                      (1)
-#define MICROPY_REPL_EMACS_WORDS_MOVE           (1)
-#define MICROPY_REPL_EMACS_EXTRA_WORDS_MOVE     (1)
-#define MICROPY_ENABLE_SCHEDULER                (1)
-#define MICROPY_VFS                             (1)
-#define MICROPY_VFS_POSIX                       (1)
-#define MICROPY_STREAM_BLOCKDEV     (1)
+#include "py/mpconfig.h"
+#include "py/obj.h"
+#include "extmod/vfs.h"
 
-#define MICROPY_VFS_ZIP  (1)
+typedef struct _fs_zip_user_mount_t {
+    mp_obj_base_t base;
+    mp_vfs_blockdev_t blockdev;
+    uint32_t cd_block; // address of central directory
+    uint32_t cd_offset;
+    uint32_t cd_size;
+    char cwd[1024/*MICROPY_ALLOC_PATH_MAX*/ + 1];
+} fs_zip_user_mount_t;
 
-#define MICROPY_PY_BUILTINS_HELP                (1)
-#define MICROPY_PY_BUILTINS_HELP_MODULES        (1)
-#define MICROPY_PY_SYS_SETTRACE                 (1)
-#define MICROPY_PY_UOS_VFS                      (1)
-#define MICROPY_PY_URANDOM_EXTRA_FUNCS          (1)
+extern const byte mzip_e_to_errno_table[9];
+extern const mp_obj_type_t mp_type_vfs_zip;
+extern const mp_obj_type_t mp_type_vfs_zip_fileio;
+extern const mp_obj_type_t mp_type_vfs_zip_textio;
 
-#ifndef MICROPY_PY_UASYNCIO
-#define MICROPY_PY_UASYNCIO                     (1)
-#endif
+MP_DECLARE_CONST_FUN_OBJ_3(zip_vfs_open_obj);
 
-// Use vfs's functions for import stat and builtin open.
-#define mp_import_stat mp_vfs_import_stat
-#define mp_builtin_open mp_vfs_open
-#define mp_builtin_open_obj mp_vfs_open_obj
+#endif // MICROPY_INCLUDED_EXTMOD_VFS_ZIP_H

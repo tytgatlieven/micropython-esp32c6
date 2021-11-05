@@ -30,6 +30,7 @@
 #include "extmod/vfs.h"
 #include "extmod/vfs_posix.h"
 #include "extmod/vfs_fat.h"
+#include "extmod/vfs_zip.h"
 #include "extmod/vfs_lfs.h"
 #include "extmod/vfs_tar.h"
 #include "extmod/stream_blockdev.h"
@@ -77,6 +78,9 @@ STATIC const mp_rom_map_elem_t uos_vfs_module_globals_table[] = {
     #endif
     #if MICROPY_VFS_FAT
     { MP_ROM_QSTR(MP_QSTR_VfsFat), MP_ROM_PTR(&mp_fat_vfs_type) },
+    #endif
+    #if MICROPY_VFS_ZIP
+    { MP_ROM_QSTR(MP_QSTR_VfsZip), MP_ROM_PTR(&mp_type_vfs_zip) },
     #endif
     #if MICROPY_VFS_LFS1
     { MP_ROM_QSTR(MP_QSTR_VfsLfs1), MP_ROM_PTR(&mp_type_vfs_lfs1) },

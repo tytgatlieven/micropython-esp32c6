@@ -210,6 +210,7 @@ PY_EXTMOD_O_BASENAME = \
 	extmod/vfs_fat.o \
 	extmod/vfs_fat_diskio.o \
 	extmod/vfs_fat_file.o \
+	extmod/vfs_zip.o \
 	extmod/vfs_lfs.o \
 	extmod/vfs_tar.o \
 	extmod/vfs_tar_file.o \
