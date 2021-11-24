@@ -133,6 +133,10 @@ mp_obj_t nrf_flashbdev_ioctl(mp_obj_t self_in, mp_obj_t op_in, mp_obj_t arg_in) 
             return MP_OBJ_NEW_SMALL_INT(0);
         }
 
+        case MP_BLOCKDEV_IOCTL_MEMMAP: {
+            return mp_obj_new_bytearray_by_ref(self->len, self->start);
+        }
+
         default:
             return mp_const_none;
     }
