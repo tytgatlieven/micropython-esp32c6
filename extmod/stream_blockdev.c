@@ -59,10 +59,10 @@ STATIC mp_uint_t stream_seek(mp_obj_t stream, int whence, int offset) {
     seek_s.whence = whence;
     int error;
     mp_uint_t res = stream_p->ioctl(stream, MP_STREAM_SEEK, (mp_uint_t)(uintptr_t)&seek_s, &error);
-    if (res == MP_STREAM_ERROR) {
-        mp_raise_OSError(error);
+    if (res == 0) {
+        return (mp_uint_t)seek_s.offset;
     }
-    return res;
+    mp_raise_OSError(error);
 }
 
 STATIC void mpy_stream_bdev_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
@@ -77,7 +77,7 @@ STATIC mp_obj_t mpy_stream_bdev_make_new(const mp_obj_type_t *type, size_t n_arg
         { MP_QSTR_stream, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_block_size, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 512} },
         { MP_QSTR_start, MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
-        { MP_QSTR_len,   MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = -1} },
+        { MP_QSTR_len,   MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
@@ -96,7 +96,7 @@ STATIC mp_obj_t mpy_stream_bdev_make_new(const mp_obj_type_t *type, size_t n_arg
     self->stream = stream;
 
     size_t bl_len = args[ARG_len].u_int;
-    if (bl_len <= 0) {
+    if (bl_len == 0) {
         bl_len = (uint32_t)stream_seek(stream, MP_SEEK_END, 0);
     }
 
@@ -109,13 +109,8 @@ STATIC mp_obj_t mpy_stream_bdev_make_new(const mp_obj_type_t *type, size_t n_arg
         mp_raise_ValueError(NULL);
     }
 
-    mp_int_t len = args[ARG_len].u_int;
-    if (len == -1) {
-        len = bl_len - start;
-    }
-
     self->start = start;
-    self->len = len;
+    self->len = bl_len - start;
 
     return MP_OBJ_FROM_PTR(self);
 }
@@ -216,7 +211,11 @@ STATIC mp_obj_t mpy_stream_bdev_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_
             return MP_OBJ_NEW_SMALL_INT(0);
 
         case MP_BLOCKDEV_IOCTL_BLOCK_COUNT: {
-            return MP_OBJ_NEW_SMALL_INT(self->len / self->block_size);
+            size_t num = self->len / self->block_size;
+            if (self->len % self->block_size) {
+                num += 1;
+            }
+            return MP_OBJ_NEW_SMALL_INT(num);
         }
 
         case MP_BLOCKDEV_IOCTL_BLOCK_SIZE: {
