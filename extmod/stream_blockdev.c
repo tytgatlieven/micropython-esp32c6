@@ -234,6 +234,17 @@ STATIC mp_obj_t mpy_stream_bdev_ioctl(mp_obj_t self_in, mp_obj_t cmd_in, mp_obj_
             return MP_OBJ_NEW_SMALL_INT(ret);
         }
 
+        case MP_BLOCKDEV_IOCTL_MEMMAP: {
+            // create mempap instance of stream and return as bytearray
+            // const mp_stream_p_t *stream_p = mp_get_stream(self->stream);
+            // int error;
+            // mp_uint_t res = stream_p->ioctl(self->stream, MP_STREAM_FLUSH, 0, &error);
+            // if (res == MP_STREAM_ERROR) {
+            //     mp_raise_OSError(error);
+            // }
+                        
+        }
+
         default:
             return mp_const_none;
     }
