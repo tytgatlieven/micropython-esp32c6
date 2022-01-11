@@ -116,7 +116,9 @@ STATIC void match_span_helper(size_t n_args, const mp_obj_t *args, mp_obj_t span
     const char *start = self->caps[no * 2];
     if (start != NULL) {
         // have a match for this group
-        const char *begin = mp_obj_str_get_str(self->str);
+        mp_buffer_info_t bufinfo;
+        mp_get_buffer_raise(self->str, &bufinfo, MP_BUFFER_READ);
+        const char *begin = bufinfo.buf;
         s = start - begin;
         e = self->caps[no * 2 + 1] - begin;
     }
@@ -186,9 +188,10 @@ STATIC mp_obj_t ure_exec(bool is_anchored, uint n_args, const mp_obj_t *args) {
         self = MP_OBJ_TO_PTR(mod_re_compile(1, args));
     }
     Subject subj;
-    size_t len;
-    subj.begin_line = subj.begin = mp_obj_str_get_data(args[1], &len);
-    subj.end = subj.begin + len;
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(args[1], &bufinfo, MP_BUFFER_READ);
+    subj.begin_line = subj.begin = bufinfo.buf;
+    subj.end = subj.begin + bufinfo.len;
     int caps_num = (self->re.sub + 1) * 2;
     mp_obj_match_t *match = m_new_obj_var(mp_obj_match_t, char *, caps_num);
     // cast is a workaround for a bug in msvc: it treats const char** as a const pointer instead of a pointer to pointer to const char
@@ -218,10 +221,11 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(re_search_obj, 2, 4, re_search);
 STATIC mp_obj_t re_split(size_t n_args, const mp_obj_t *args) {
     mp_obj_re_t *self = MP_OBJ_TO_PTR(args[0]);
     Subject subj;
-    size_t len;
+    mp_buffer_info_t bufinfo;
     const mp_obj_type_t *str_type = mp_obj_get_type(args[1]);
-    subj.begin_line = subj.begin = mp_obj_str_get_data(args[1], &len);
-    subj.end = subj.begin + len;
+    mp_get_buffer_raise(args[1], &bufinfo, MP_BUFFER_READ);
+    subj.begin_line = subj.begin = bufinfo.buf;
+    subj.end = subj.begin + bufinfo.len;
     int caps_num = (self->re.sub + 1) * 2;
 
     int maxsplit = 0;
@@ -277,11 +281,11 @@ STATIC mp_obj_t re_sub_helper(size_t n_args, const mp_obj_t *args) {
         // Note: flags are currently ignored
     }
 
-    size_t where_len;
-    const char *where_str = mp_obj_str_get_data(where, &where_len);
     Subject subj;
-    subj.begin_line = subj.begin = where_str;
-    subj.end = subj.begin + where_len;
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(where, &bufinfo, MP_BUFFER_READ);
+    subj.begin_line = subj.begin = bufinfo.buf;
+    subj.end = subj.begin + bufinfo.len;
     int caps_num = (self->re.sub + 1) * 2;
 
     vstr_t vstr_return;
@@ -310,10 +314,13 @@ STATIC mp_obj_t re_sub_helper(size_t n_args, const mp_obj_t *args) {
         vstr_add_strn(&vstr_return, subj.begin, match->caps[0] - subj.begin);
 
         // Get replacement string
-        const char *repl = mp_obj_str_get_str((mp_obj_is_callable(replace) ? mp_call_function_1(replace, MP_OBJ_FROM_PTR(match)) : replace));
+        mp_obj_t repl_obj = (mp_obj_is_callable(replace) ? mp_call_function_1(replace, MP_OBJ_FROM_PTR(match)) : replace);
+        mp_get_buffer_raise(repl_obj, &bufinfo, MP_BUFFER_READ);
+        const char *repl = bufinfo.buf;
+        const char *repl_top = repl + bufinfo.len;
 
         // Append replacement string to result, substituting any regex groups
-        while (*repl != '\0') {
+        while (repl < repl_top) {
             if (*repl == '\\') {
                 ++repl;
                 bool is_g_format = false;
@@ -401,8 +408,11 @@ STATIC const mp_obj_type_t re_type = {
 
 STATIC mp_obj_t mod_re_compile(size_t n_args, const mp_obj_t *args) {
     (void)n_args;
-    const char *re_str = mp_obj_str_get_str(args[0]);
-    int size = re1_5_sizecode(re_str);
+
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(args[0], &bufinfo, MP_BUFFER_READ);
+    const char *re_str = bufinfo.buf;
+    int size = re1_5_sizecode(re_str, bufinfo.len);
     if (size == -1) {
         goto error;
     }
@@ -413,7 +423,7 @@ STATIC mp_obj_t mod_re_compile(size_t n_args, const mp_obj_t *args) {
         flags = mp_obj_get_int(args[1]);
     }
     #endif
-    int error = re1_5_compilecode(&o->re, re_str);
+    int error = re1_5_compilecode(&o->re, re_str, bufinfo.len);
     if (error != 0) {
     error:
         mp_raise_ValueError(MP_ERROR_TEXT("error in regex"));
