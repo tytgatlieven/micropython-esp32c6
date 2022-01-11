@@ -2222,6 +2222,8 @@ mp_obj_t mp_obj_new_str_from_vstr(const mp_obj_type_t *type, vstr_t *vstr) {
             vstr->alloc = 0;
             return MP_OBJ_NEW_QSTR(q);
         }
+    } else {
+        type = &mp_type_bytes;
     }
 
     byte *data;
