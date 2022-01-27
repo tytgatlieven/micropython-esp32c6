@@ -2,7 +2,7 @@
 
 > This port is currently only for Realtek's RTL8722DM microcontroller!
 
-Realtek's RTL8722DM is a ARM Cortex-M33 based, dual-band WiFi and BLE 5.0 capable microntroller that is ideal for many IoT applications.
+Realtek's RTL8722DM is a ARM Cortex-M33 based, dual-band WiFi (2.4G Hz and 5G Hz) and BLE 5.0 capable microntroller that is ideal for many IoT applications.
 
 This MicroPython port is for Ameba RTL8722DM platform, details of the platform can be found here  https://www.amebaiot.com/en/amebad/
 
@@ -16,6 +16,24 @@ After that, you can build firmware by using the following command in the current
 ```bash
 $ make
 ```
+
+
+Take note that this build has 2 dependencies,
+1. ARM generic toolchain to be installed seperately and added into your `PATH`
+2. The old `amb_micropython` repository who serve as `BSP` under the `lib` directory 
+
+Also Note that, there are currently 2 `BOARD` supported in this SDK, they are.
+1. RTL8722DM
+2. RTL8722DM_MINI
+
+Thus, in order to build firmware specific to a board, the compile time macro must be added when invoking `make` command. For example, to build for RTL8722DM_MINI, the following command shuold be used instead,
+
+```bash
+$ make BOARD=RTL8722DM_MINI
+```
+
+PS: `BOARD` macro default to `RTL8722DM` board thus no macro is required when compiling for this board.
+
 
 ### 1.1 FAQ
 During the building process, some user may encounter error that suspend the process, this is due to missing system enevironment setup and can be fixed as follows,
@@ -160,32 +178,37 @@ Pin('PA_26', mode=Pin.OUT, pull=Pin.PULL_UP) # this line is returned by MicroPyt
 ```
 
 ### PWM
-To use PWM (Pulse Width Modulation), import ```PWM``` module through ```machine```. Here pin PA_26 is used as an example to make an LED to slowly brighten up
+To use PWM (Pulse Width Modulation), import ```PWM``` module through ```machine```. Here pin PB_7 is used as an example to make an LED to slowly brighten up
 
 ```Python
 from machine import Pin, PWM
-import time
-p = PWM(pin = "PA_26")
+p = PWM(pin = "PB_7")
 # 0 duty cycle thus output 0
-p.write(0.0)
+p.duty_u16 (0)
 # 10% duty cycle
-p.write(0.1)
+p.duty_u16 (6553)
 # 50% duty cycle
-p.write(0.5)
+p.duty_u16(32768)
 # 100% duty cycle
-p.write(1.0)
+p.duty_u16 (65535)
+# 20 Hz at 50% duty cycle, LED blinking
+p.duty_u16 (32768)
+p.freq(20)
 ```
-Copy and execute each line one by one to see LED gradually bright up
+Copy and execute each line one by one to see LED gradually bright up and blink
 
 #### For Your Information
 The above example start with creating an object of class ```PWM```, and it has the following format
 ```Python
-PWM( unit_id[optional], pin_name[required])
+PWM(pin_name[required], unit_id[optional])
 ```
 Use help(PWM) to view more information about this class
 
-Note: PWM is only supported on the following pins,
+Note: For RTL8722DM, PWM is only supported on the following pins,
 PA_23, PA_24, PA_25, PA_26
+
+For MINI board,
+PB_4, PB_5, PB_7, PA_12, PA_13, PA_23, PA_24, PA_28, PA_30
 
 
 
@@ -195,7 +218,7 @@ To use ADC (Analog to Digital Convertor), import ```ADC``` module through ```mac
 ```Python
 from machine import ADC
 a = ADC(0)
-a.read()
+a.read_u16()
 ```
 
 #### For Your Information
@@ -205,7 +228,7 @@ ADC( unit_id[required])
 ```
 Use help(ADC) to view more information about this class
 
-Note: There are only 7 units of ADC pins, they are
+Note: There are 7 units of ADC pins, they are
 |unit |  Pin  
 |:----|:-----:
 | 0   |  PB_4 
@@ -239,10 +262,10 @@ There are 3 sets of 32KHz General Timers available to user, Timer 1/2/3
 ```Python
 from machine import Timer
 t = Timer(1)  # Use Timer 1/2/3 only
-t.start(2000000, t.PERIODICAL)  # Set GTimer fired periodically at duration of 2 seconds, printing text on the terminal
+t.init(t.PERIODIC, 2000)  # Set GTimer fired periodically at duration of 2 seconds, printing text on the terminal
 
 # To stop the periodical timer, type 
-t.stop()
+t.deinit()
 ```
 
 #### For Your Information
@@ -257,8 +280,8 @@ Note: There are only 3 units of general timer, they are
 | unit |  Timer  |  Freq
 |:-----|:-------:|:-------: 
 |  1   |  TIMER1 |  32 KHz 
-|  2   |  TIMER2 |  32KHz 
-|  3   |  TIMER3 |  32KHz 
+|  2   |  TIMER2 |  32 KHz 
+|  3   |  TIMER3 |  32 KHz 
 
 
 ### RTC
@@ -287,7 +310,7 @@ uart.read(5) # read up to 5 bytes
 #### For Your Information
 The above example start with creating an object of class ```UART```, and it has the following format
 ```Python
-UART( unit_id[optional], baudrate[optional], databits[optional], stopbit[optional], paritybit[optional], timeout[optional], tx_pin[required], rx_pin[required])
+UART( unit_id[optional], baudrate[optional], databits[optional], paritybit[optional], stopbit[optional], tx_pin[required], rx_pin[required], timeout[optional],flowcontrol[optional] )
 ```
 PS: Leaving all parameters except tx and rx blank will set the uart to default values which are
 
@@ -299,12 +322,20 @@ PS: Leaving all parameters except tx and rx blank will set the uart to default v
 | stopbit   |      1
 | paritybit |      0
 | timeout   |     10 ms
+| flowCtrl  |     -1
 
-Note: There are currently 2 sets of uart, they are
+Note: There are 2 sets of uart, they are
 | unit |   TX   |   RX
 |:-----|:------:|:-------: 
 |  0   |  PA_21 |  PA_22
 |  3   |  PA_26 |  PA_25
+
+For MINI board, they are
+| unit |   TX   |   RX
+|:-----|:------:|:-------: 
+|  0   |  PA_21 |  PA_22
+|  1   |  PB_1  |  PB_2
+
 
  Use help(UART) to view more information about this class
 
@@ -319,14 +350,43 @@ Note: I2C only works in ```master``` mode.
 from machine import Pin, I2C
 i2c = I2C(scl = "PA_25", sda = "PA_26", freq=100000) # configure I2C with pins and freq. of 100KHz
 i2c.scan()
-i2c.writeto(8, 123) # send 1 byte to slave with address 8
+i2c.writeto(8,bytes([123])) # send 1 byte to slave with address 8 with integer '123'
+i2c.writeto(8,str("asf"))  # send a 3 bytes string to slave
 i2c.readfrom(8, 6) # receive 6 bytes from slave
+```
+
+
+#### Arduino Test Code
+```C
+#include <Wire.h>
+
+void setup() {
+  Wire.begin(8);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
+  Serial.begin(9600);           // start serial for output
+}
+
+void loop() {
+  delay(100);
+}
+
+// function that executes whenever data is received from master
+// this function is registered as an event, see setup()
+void receiveEvent(int howMany) {
+  while (1 < Wire.available()) { // loop through all but the last
+    char c = Wire.read(); // receive byte as a character
+    Serial.print(c);         // print the character
+  }
+  int x = Wire.read();    // receive byte as an integer
+  Serial.println((char)x);         // print as char
+  Serial.println(x);               // print as int
+}
 ```
 
 #### For Your Information
 The above example start with creating an object of class ```I2C```, and it has the following format
 ```Python
-I2C( unit_id[optional], sda_pin[required], scl_pin[required], frequency[optional])
+I2C( unit_id[optional], scl_pin[required], sda_pin[required], frequency[optional])
 ```
 PS: Leaving optional parameters blank will will assume taking default values which are
 
@@ -340,20 +400,48 @@ There is currently 1 set of I2C, it is
 |:-----|:------:|:------: 
 |   0  |  PA_26 |  PA_25
 
+For MINI board,
+| unit |   sda  |   scl
+|:-----|:------:|:------: 
+|   0  |  PB_0 |  PA_31
+
 Use help(I2C) to view more information about this class
 
 
-### SPI 
+### SPI
 Use the ```SPI``` (Serial Peripheral Interface) module through ```machine``` module
 
 
 ```Python
 from machine import SPI
-spi = SPI(0)		  # Only support 2 sets of SPI -- 0 and 1 
+spi = SPI(1)		  # Only support 2 sets of SPI -- 0 and 1 
 spi 				      # type instance name to check for details of the SPI set 
-spi.write(123)		# Write number 123 
+spi.write(bytes([123]))		# Write number 123 
 spi.read()
 ```
+
+
+#### Arduino Test Code
+```C
+#include <SPI.h>
+
+void setup (void) {
+   Serial.begin (115200);
+   pinMode(MISO, OUTPUT); // have to send on master in so it set as output
+   SPCR |= _BV(SPE); // turn on SPI in slave mode
+   SPI.attachInterrupt(); // turn on interrupt
+}
+ISR (SPI_STC_vect){ // SPI interrupt routine  
+   byte c = SPDR; // read byte from SPI Data Register, value range from 0 - 255
+   Serial.println(c); // print as it is 
+   Serial.println((char)c); // print the ascii char
+}
+
+void loop (void) {
+   // do nothing
+}
+```
+
 
 #### For Your Information
 The above example start with creating an object of class ```SPI```, and it has the following format
@@ -364,7 +452,7 @@ PS: Leaving optional parameters blank will assume taking default values which ar
 
 | Parameter | Default value
 |:----------|:-------------: 
-| baudrate  |  2000000 Hz
+| baudrate  |  200000 Hz
 | polarity  | inactive_low
 | phase     | toggle_middle
 | databits  |      8
@@ -380,9 +468,29 @@ There is currently 2 set of SPI, they are,
 |   0  |  PB_18 |  PB_19  | PB_20 | PB_21
 |   1  |  PB_4  |  PB_5   | PB_6  | PB_7
 
+For MINI board,
+| unit |   mosi |   miso  |  SCK  |  CS
+|:-----|:------:|:-------:|:-----:|:-----: 
+|   1  |  PA_12 |  PA_13  | PA_14 | PA_15
+
 Note: both unit support master mode, but ```only unit 0``` support slave mode
 
 Use help(SPI) to view more information about this class
+
+
+### FLASH
+Use the ```FLASH``` (External FLASH 2MB) module through ```machine``` module
+
+```Python
+from machine import FLASH
+f=FLASH() #create a FLASH object
+f.read(5, 1048576) #read 5 bytes from the specific address (1048576 = 0X100000)
+f.write("Hello", 1048576) #write buffer content to the specific address
+f.update("Hey", 1048576) #erase the existing content and write new content to the specific address
+f.read(5, 1048576)
+```
+
+
 
 
 ## 5. Netoworking
@@ -404,7 +512,7 @@ WLAN( mode[required])
 ```
 
 
-#### Connect to WiFi with WPA2 security type 
+#### Connect to WiFi with WPA2 security type
 WPA2 is the most common security type, if not sure what security type your WiFi router is configured as, use this one
 ```Python
 from wireless import WLAN
