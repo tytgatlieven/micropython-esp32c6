@@ -139,6 +139,9 @@
 #define MICROPY_PY_MACHINE_SPI      (0)
 #define MICROPY_PY_MACHINE_SPI_MIN_DELAY (0)
 #define MICROPY_PY_FRAMEBUF         (0)
+#ifndef MICROPY_ENABLE_SCHEDULER
+#define MICROPY_ENABLE_SCHEDULER    (1)
+#endif
 
 #ifndef MICROPY_HW_LED_COUNT
 #define MICROPY_HW_LED_COUNT        (0)
@@ -190,6 +193,8 @@
 
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF   (1)
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE  (0)
+
+#define MICROPY_PY_TICKER (MICROPY_PY_MACHINE_SOFT_PWM || MICROPY_PY_BLUETOOTH)
 
 // if sdk is in use, import configuration
 #if BLUETOOTH_SD
@@ -313,6 +318,14 @@ extern const struct _mp_obj_module_t ble_module;
 #define ROOT_POINTERS_SOFTPWM
 #endif
 
+#if MICROPY_BLUETOOTH_NIMBLE
+struct _mp_bluetooth_nimble_root_pointers_t;
+struct _mp_bluetooth_nimble_malloc_t;
+#define MICROPY_PORT_ROOT_POINTER_BLUETOOTH_NIMBLE struct _mp_bluetooth_nimble_malloc_t *bluetooth_nimble_memory; struct _mp_bluetooth_nimble_root_pointers_t *bluetooth_nimble_root_pointers;
+#else
+#define MICROPY_PORT_ROOT_POINTER_BLUETOOTH_NIMBLE
+#endif
+
 #if defined(NRF52840_XXAA)
 #define NUM_OF_PINS 48
 #else
@@ -330,6 +343,7 @@ extern const struct _mp_obj_module_t ble_module;
     \
     ROOT_POINTERS_MUSIC \
     ROOT_POINTERS_SOFTPWM \
+    MICROPY_PORT_ROOT_POINTER_BLUETOOTH_NIMBLE \
     \
     /* micro:bit root pointers */ \
     void *async_data[2]; \
@@ -348,4 +362,28 @@ extern const struct _mp_obj_module_t ble_module;
 
 #ifndef MP_NEED_LOG2
 #define MP_NEED_LOG2                (1)
+
+// We have inlined IRQ functions for efficiency (they are generally
+// 1 machine instruction).
+//
+// Note on IRQ state: you should not need to know the specific
+// value of the state variable, but rather just pass the return
+// value from disable_irq back to enable_irq.  If you really need
+// to know the machine-specific values, see irq.h.
+
+#include <nrf.h>
+
+static inline void enable_irq(mp_uint_t state) {
+    __set_PRIMASK(state);
+}
+
+static inline mp_uint_t disable_irq(void) {
+    mp_uint_t state = __get_PRIMASK();
+    __disable_irq();
+    return state;
+}
+
+#define MICROPY_BEGIN_ATOMIC_SECTION()     disable_irq()
+#define MICROPY_END_ATOMIC_SECTION(state)  enable_irq(state)
+
 #endif

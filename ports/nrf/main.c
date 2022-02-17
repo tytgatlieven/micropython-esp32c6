@@ -54,6 +54,10 @@
 #include "rtcounter.h"
 #include "mphalport.h"
 
+#if MICROPY_PY_BLUETOOTH
+#include "extmod/modbluetooth.h"
+#endif
+
 #if MICROPY_PY_MACHINE_HW_PWM
 #include "pwm.h"
 #endif
@@ -67,8 +71,11 @@
 #include "ble_uart.h"
 #endif
 
-#if MICROPY_PY_MACHINE_SOFT_PWM
+#if MICROPY_PY_TICKER
 #include "ticker.h"
+#endif
+
+#if MICROPY_PY_MACHINE_SOFT_PWM
 #include "softpwm.h"
 #endif
 
@@ -233,8 +240,11 @@ soft_reset:
     ble_uart_init0();
     #endif
 
-    #if MICROPY_PY_MACHINE_SOFT_PWM
+    #if MICROPY_PY_TICKER
     ticker_init0();
+    #endif
+
+    #if MICROPY_PY_MACHINE_SOFT_PWM
     softpwm_init0();
     #endif
 
@@ -245,8 +255,11 @@ soft_reset:
     board_modules_init0();
     #endif
 
-    #if MICROPY_PY_MACHINE_SOFT_PWM
+    #if MICROPY_PY_TICKER
     ticker_start();
+    #endif
+
+    #if MICROPY_PY_MACHINE_SOFT_PWM
     pwm_start();
     #endif
 
@@ -274,6 +287,10 @@ soft_reset:
             }
         }
     }
+
+    #if MICROPY_PY_BLUETOOTH
+    mp_bluetooth_deinit();
+    #endif
 
     mp_deinit();
 
