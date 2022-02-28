@@ -151,6 +151,16 @@ STATIC mp_obj_t machine_soft_reset(void) {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(machine_soft_reset_obj, machine_soft_reset);
 
+// idle()
+// This executies a wfi machine instruction which reduces power consumption
+// of the MCU until an interrupt occurs, at which point execution continues.
+STATIC mp_obj_t machine_idle(void) {
+    MICROPY_EVENT_POLL_HOOK
+    __WFI();
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
+
 STATIC mp_obj_t machine_lightsleep(void) {
     __WFE();
     return mp_const_none;
@@ -196,6 +206,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_soft_reset),         MP_ROM_PTR(&machine_soft_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_enable_irq),         MP_ROM_PTR(&machine_enable_irq_obj) },
     { MP_ROM_QSTR(MP_QSTR_disable_irq),        MP_ROM_PTR(&machine_disable_irq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_idle),               MP_ROM_PTR(&machine_idle_obj) },
     { MP_ROM_QSTR(MP_QSTR_sleep),              MP_ROM_PTR(&machine_lightsleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_lightsleep),         MP_ROM_PTR(&machine_lightsleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_deepsleep),          MP_ROM_PTR(&machine_deepsleep_obj) },
