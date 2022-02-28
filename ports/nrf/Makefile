@@ -533,7 +533,14 @@ nrfutil_dfu_deploy: nrfutil_pkg
 	$(Q)nrfutil dfu usb-serial -pkg $(BUILD)/$(OUTPUT_FILENAME)_dfu.zip -p $(NRFUTIL_PORT) -t 0
 
 deploy: nrfutil_dfu_deploy
-endif
+
+else ifeq ($(FLASHER), uf2)
+
+UF2CONV ?= $(TOP)/tools/uf2conv.py
+
+$(BUILD)/firmware.uf2: $(BUILD)/firmware.hex
+	$(Q)$(PYTHON) $(UF2CONV) -b $(TEXT0) -c -o $@ $<
+endif  # $(FLASHER)
 
 flash: deploy
 
