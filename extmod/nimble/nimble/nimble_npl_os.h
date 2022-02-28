@@ -95,5 +95,6 @@ void mp_bluetooth_nimble_os_cputime_timer_poll(void);
 // --- Must be provided by the MicroPython port -------------------------------
 
 void mp_bluetooth_nimble_hci_uart_wfi(void);
+int32_t mp_bluetooth_hci_poll_now(void);
 
 #endif // MICROPY_INCLUDED_STM32_NIMBLE_NIMBLE_NPL_OS_H
