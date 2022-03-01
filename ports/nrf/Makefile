@@ -287,6 +287,38 @@ ifneq ($(SD), )
 CFLAGS += -DSOFTDEVICE_PRESENT
 endif
 
+ifeq ($(MICROPY_PY_BLUETOOTH),1)
+
+ifneq ($(SD), )
+$(error "MICROPY_PY_BLUETOOTH cannot be used at same time as SD")
+endif
+
+# NRF chips support directly running the entire stack, so enable the controller.
+MICROPY_BLUETOOTH_NIMBLE ?= 1
+MICROPY_BLUETOOTH_NIMBLE_CONTROLLER ?= 1
+
+CFLAGS += -DMICROPY_PY_BLUETOOTH=1
+CFLAGS += -DMICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE=1
+
+ifeq ($(MICROPY_BLUETOOTH_NIMBLE),1)
+include $(TOP)/extmod/nimble/nimble.mk
+
+GIT_SUBMODULES += lib/mynewt-nimble
+CFLAGS_MOD += -DMICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS=1
+
+INC += -I$(TOP)/$(NIMBLE_LIB_DIR)/nimble/drivers/nrf52/include
+
+SRC_C += mpnimbleport.c
+LIB_SRC_C += $(addprefix $(NIMBLE_LIB_DIR)/, \
+	$(addprefix nimble/drivers/nrf52/src/, \
+		ble_hw.c \
+		ble_phy_trace.c \
+		ble_phy.c \
+	) \
+)
+endif
+endif
+
 SRC_C += $(addprefix drivers/usb/,\
 	usb_cdc.c \
 	usb_descriptors.c \
@@ -350,6 +382,8 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_NRFX_HAL:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(DRIVERS_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SYSTEM_C_SRC:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_LIB:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(LIB_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(EXTMOD_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins_gen.o
 
 $(BUILD)/$(OOFATFS_DIR)/ff.o: COPT += -Os
@@ -490,12 +524,23 @@ nrfutil_dfu_sd: $(BUILD)/$(OUTPUT_FILENAME).hex
 	$(Q)nrfutil pkg generate --hw-version 52 --sd-req 0x00 --sd-id 0x00 --softdevice $(BUILD)/stripped_sd.hex $(BUILD)/stripped_sd.zip
 	$(Q)nrfutil dfu usb-serial -pkg $(BUILD)/stripped_sd.zip -p $(NRFUTIL_PORT) -t 0
 
-nrfutil_dfu_deploy: $(BUILD)/$(OUTPUT_FILENAME).hex
+$(BUILD)/$(OUTPUT_FILENAME)_dfu.zip: $(BUILD)/$(OUTPUT_FILENAME).hex
 	$(Q)nrfutil pkg generate --hw-version 52 --sd-req $(NRFUTIL_SD_REQ) --application-version 1 --application $(BUILD)/$(OUTPUT_FILENAME).hex $(BUILD)/$(OUTPUT_FILENAME)_dfu.zip
+
+nrfutil_pkg: $(BUILD)/$(OUTPUT_FILENAME)_dfu.zip
+
+nrfutil_dfu_deploy: nrfutil_pkg
 	$(Q)nrfutil dfu usb-serial -pkg $(BUILD)/$(OUTPUT_FILENAME)_dfu.zip -p $(NRFUTIL_PORT) -t 0
 
 deploy: nrfutil_dfu_deploy
-endif
+
+else ifeq ($(FLASHER), uf2)
+
+UF2CONV ?= $(TOP)/tools/uf2conv.py
+
+$(BUILD)/firmware.uf2: $(BUILD)/firmware.hex
+	$(Q)$(PYTHON) $(UF2CONV) -b $(TEXT0) -c -o $@ $<
+endif  # $(FLASHER)
 
 flash: deploy
 
