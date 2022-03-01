@@ -92,15 +92,26 @@
     #define MICROPY_FATFS_MAX_SS       (4096)
 #endif
 
-// TODO these should be generic, not bound to fatfs
-#define mp_type_fileio fatfs_type_fileio
-#define mp_type_textio fatfs_type_textio
-
 // use vfs's functions for import stat and builtin open
 #if MICROPY_VFS
 #define mp_import_stat mp_vfs_import_stat
 #define mp_builtin_open mp_vfs_open
 #define mp_builtin_open_obj mp_vfs_open_obj
+
+#if MICROPY_VFS_FAT
+#define mp_type_fileio mp_type_vfs_fat_fileio
+#define mp_type_textio mp_type_vfs_fat_textio
+#elif MICROPY_VFS_LFS1
+#define mp_type_fileio mp_type_vfs_lfs1_fileio
+#define mp_type_textio mp_type_vfs_lfs1_textio
+#elif MICROPY_VFS_LFS2
+#define mp_type_fileio mp_type_vfs_lfs2_fileio
+#define mp_type_textio mp_type_vfs_lfs2_textio
+#endif
+
+#else // !MICROPY_VFS_FAT
+#define mp_type_fileio fatfs_type_fileio
+#define mp_type_textio fatfs_type_textio
 #endif
 
 // Enable micro:bit filesystem by default.
