@@ -47,19 +47,19 @@
 // Board overridable feature configuration.
 
 #ifndef MICROPY_ENABLE_SOURCE_LINE
-#define MICROPY_ENABLE_SOURCE_LINE         (1)
+#define MICROPY_ENABLE_SOURCE_LINE         (EXTRA_FEAT)
 #endif
 
 #ifndef MICROPY_PY_ARRAY_SLICE_ASSIGN
-#define MICROPY_PY_ARRAY_SLICE_ASSIGN      (1)
+#define MICROPY_PY_ARRAY_SLICE_ASSIGN      (EXTRA_FEAT)
 #endif
 
 #ifndef MICROPY_PY_SYS_STDFILES
-#define MICROPY_PY_SYS_STDFILES            (1)
+#define MICROPY_PY_SYS_STDFILES            (EXTRA_FEAT)
 #endif
 
 #ifndef MICROPY_PY_UBINASCII
-#define MICROPY_PY_UBINASCII               (1)
+#define MICROPY_PY_UBINASCII               (EXTRA_FEAT)
 #endif
 
 // Board overridable port specific feature configuration.
