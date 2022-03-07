@@ -251,6 +251,12 @@ STATIC mp_obj_t machine_rtc_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_rtc_deinit_obj, machine_rtc_deinit);
 
+void machine_rtc_deinit_all() {
+    for (uint8_t i = 0; i < MP_ARRAY_SIZE(machine_rtc_instances); i++) {
+        const nrfx_rtc_t *instance = &machine_rtc_instances[i];
+        nrfx_rtc_uninit(instance);
+    }
+}
 
 STATIC const mp_rom_map_elem_t machine_rtc_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_start),     MP_ROM_PTR(&machine_rtc_start_obj) },

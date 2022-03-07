@@ -291,6 +291,7 @@ soft_reset:
     #if MICROPY_PY_BLUETOOTH
     mp_bluetooth_deinit();
     #endif
+    machine_deinit();
 
     mp_deinit();
 

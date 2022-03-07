@@ -30,5 +30,6 @@
 extern const mp_obj_type_t machine_rtcounter_type;
 
 void rtc_init0(void);
+void machine_rtc_deinit_all();
 
 #endif // RTCOUNTER_H__

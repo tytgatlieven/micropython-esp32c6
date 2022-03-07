@@ -34,3 +34,5 @@ void spi_transfer(const machine_hard_spi_obj_t * self,
                   size_t                         len,
                   const void *                   src,
                   void *                         dest);
+
+void machine_hard_spi_deinit_all(void);

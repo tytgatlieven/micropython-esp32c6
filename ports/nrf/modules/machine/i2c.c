@@ -156,6 +156,13 @@ int machine_hard_i2c_transfer_single(mp_obj_base_t *self_in, uint16_t addr, size
     return transfer_ret;
 }
 
+void machine_i2c_deinit_all() { 
+    for (uint8_t i = 0; i < MP_ARRAY_SIZE(machine_hard_i2c_obj); i++) {
+        const machine_hard_i2c_obj_t *instance = &machine_hard_i2c_obj[i];
+        nrfx_twi_uninit(&instance->p_twi);
+    }
+}
+
 STATIC const mp_machine_i2c_p_t machine_hard_i2c_p = {
     .transfer = mp_machine_i2c_transfer_adaptor,
     .transfer_single = machine_hard_i2c_transfer_single,

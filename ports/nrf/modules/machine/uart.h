@@ -35,7 +35,7 @@ typedef struct _machine_hard_uart_obj_t machine_hard_uart_obj_t;
 extern const mp_obj_type_t machine_hard_uart_type;
 
 void uart_init0(void);
-void uart_deinit(void);
+void machine_uart_deinit_all(void);
 void uart_irq_handler(mp_uint_t uart_id);
 
 bool uart_rx_any(const machine_hard_uart_obj_t * uart_obj);

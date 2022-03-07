@@ -333,6 +333,14 @@ STATIC void machine_hard_pwm_deinit(mp_obj_t self_in) {
     nrfx_pwm_uninit(self->p_pwm);
 }
 
+void machine_hard_pwm_deinit_all() {
+    for (uint8_t i = 0; i < MP_ARRAY_SIZE(machine_hard_pwm_instances); i++) {
+        const nrfx_pwm_t *instance = &machine_hard_pwm_instances[i];
+        nrfx_pwm_stop(instance, true);
+        nrfx_pwm_uninit(instance);
+    }
+}
+
 STATIC mp_obj_t machine_hard_pwm_freq(mp_obj_t self_in, mp_arg_val_t *args) {
     machine_hard_pwm_obj_t *self = self_in;
     (void)self;

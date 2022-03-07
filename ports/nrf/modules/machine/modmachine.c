@@ -94,6 +94,15 @@ void machine_init(void) {
     NRF_POWER->RESETREAS = (1 << reset_cause);
 }
 
+void machine_deinit(void) {
+    machine_hard_pwm_deinit_all();
+    machine_i2c_deinit_all();
+    machine_rtc_deinit_all();
+    machine_hard_spi_deinit_all();
+    machine_timer_deinit_all();
+    machine_uart_deinit_all();
+}
+
 // machine.info([dump_alloc_table])
 // Print out lots of information about the board.
 STATIC mp_obj_t machine_info(mp_uint_t n_args, const mp_obj_t *args) {

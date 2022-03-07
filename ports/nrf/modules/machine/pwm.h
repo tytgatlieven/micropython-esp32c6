@@ -25,5 +25,6 @@
  */
 
 void pwm_init0(void);
+void machine_hard_pwm_deinit_all(void);
 
 extern const mp_obj_type_t machine_hard_pwm_type;

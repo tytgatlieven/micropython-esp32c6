@@ -220,6 +220,10 @@ STATIC mp_obj_t machine_timer_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_timer_deinit_obj, machine_timer_deinit);
 
+void machine_timer_deinit_all() { 
+    timer_init0();
+}
+
 STATIC const mp_rom_map_elem_t machine_timer_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_time),     MP_ROM_PTR(&machine_timer_period_obj) }, // alias
     { MP_ROM_QSTR(MP_QSTR_period),   MP_ROM_PTR(&machine_timer_period_obj) },

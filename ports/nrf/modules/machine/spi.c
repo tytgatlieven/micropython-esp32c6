@@ -377,6 +377,13 @@ STATIC void machine_hard_spi_deinit(mp_obj_t self_in) {
     nrfx_spi_uninit(self->p_spi);
 }
 
+void machine_hard_spi_deinit_all() { 
+    for (uint8_t i = 0; i < MP_ARRAY_SIZE(machine_spi_instances); i++) {
+        const nrfx_spi_t *instance = &machine_spi_instances[i];
+        nrfx_spi_uninit(instance);
+    }
+}
+
 STATIC void machine_hard_spi_transfer(mp_obj_base_t *self_in, size_t len, const uint8_t *src, uint8_t *dest) {
     const machine_hard_spi_obj_t *self = (machine_hard_spi_obj_t*)self_in;
     spi_transfer(self, len, src, dest);

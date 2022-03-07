@@ -30,5 +30,6 @@
 extern const mp_obj_type_t machine_timer_type;
 
 void timer_init0(void);
+void machine_timer_deinit_all(void);
 
 #endif // TIMER_H__
