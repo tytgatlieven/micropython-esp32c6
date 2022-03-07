@@ -287,10 +287,12 @@ STATIC mp_obj_t machine_hard_spi_make_new(mp_arg_val_t *args) {
         self->p_config->sck_pin  = mp_hal_get_pin_obj(args[ARG_NEW_sck].u_obj)->pin;
         self->p_config->mosi_pin = mp_hal_get_pin_obj(args[ARG_NEW_mosi].u_obj)->pin;
         self->p_config->miso_pin = mp_hal_get_pin_obj(args[ARG_NEW_miso].u_obj)->pin;
-    } else {
+    } else if (spi_id == 0) {
         self->p_config->sck_pin  = MICROPY_HW_SPI0_SCK;
         self->p_config->mosi_pin = MICROPY_HW_SPI0_MOSI;
         self->p_config->miso_pin = MICROPY_HW_SPI0_MISO;
+    } else {
+        mp_raise_ValueError(MP_ERROR_TEXT("pins not defined."));
     }
 
     // Manually trigger slave select from upper layer.
