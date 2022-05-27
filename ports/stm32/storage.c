@@ -80,7 +80,7 @@ uint32_t storage_get_block_count(void) {
     #endif
 }
 
-static void storage_systick_callback(uint32_t ticks_ms) {
+static void MICROPY_HW_RAM_SECTION(storage_systick_callback)(uint32_t ticks_ms) {
     if (STORAGE_IDLE_TICK(ticks_ms)) {
         // Trigger a FLASH IRQ to execute at a lower priority
         #if __CORTEX_M == 0

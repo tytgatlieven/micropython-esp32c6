@@ -20,8 +20,14 @@ SECTIONS
     .isr_vector :
     {
         . = ALIGN(4);
+        _start_isr = .;
         KEEP(*(.isr_vector)) /* Startup code */
+        _end_isr = .;
+    } >RAM AT >FLASH_ISR
+    _start_init_isr = LOADADDR(.isr_vector); /* Used by the start-up code to initialise data */
 
+    .isr_vector :
+    {
         /* This first flash block is 16K annd the isr vectors only take up
            about 400 bytes. So we pull in a couple of object files to pad it
            out. */

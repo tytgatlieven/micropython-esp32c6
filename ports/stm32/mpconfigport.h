@@ -392,3 +392,8 @@ static inline mp_uint_t disable_irq(void) {
 
 // Needed for MICROPY_PY_URANDOM_SEED_INIT_FUNC.
 uint32_t rng_get(void);
+
+#define MICROPY_HW_RAM_SECTION(n) __attribute__((section(".ram.text." #n))) n
+#define MICROPY_WRAP_MP_SCHED_EXCEPTION(f) MICROPY_HW_RAM_SECTION(f)
+#define MICROPY_WRAP_MP_SCHED_KEYBOARD_INTERRUPT(f) MICROPY_HW_RAM_SECTION(f)
+#define MICROPY_WRAP_MP_SCHED_SCHEDULE(f) MICROPY_HW_RAM_SECTION(f)

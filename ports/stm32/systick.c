@@ -36,7 +36,7 @@ extern __IO uint32_t uwTick;
 
 systick_dispatch_t systick_dispatch_table[SYSTICK_DISPATCH_NUM_SLOTS];
 
-void SysTick_Handler(void) {
+void MICROPY_HW_RAM_SECTION(SysTick_Handler)(void) {
     // Instead of calling HAL_IncTick we do the increment here of the counter.
     // This is purely for efficiency, since SysTick is called 1000 times per
     // second at the highest interrupt priority.

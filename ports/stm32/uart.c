@@ -1100,7 +1100,7 @@ void uart_tx_strn(pyb_uart_obj_t *uart_obj, const char *str, uint len) {
 // Notes:
 // - ORE (overrun error) is tied to the RXNE IRQ line.
 // - On STM32F4 the IRQ flags are cleared by reading SR then DR.
-void uart_irq_handler(mp_uint_t uart_id) {
+void MICROPY_HW_RAM_SECTION(uart_irq_handler)(mp_uint_t uart_id) {
     // get the uart object
     pyb_uart_obj_t *self = MP_STATE_PORT(pyb_uart_obj_all)[uart_id - 1];
 
@@ -1177,9 +1177,11 @@ void uart_irq_handler(mp_uint_t uart_id) {
     #endif
 
     // Check the flags to see if the user handler should be called
+    #if 0
     if (self->mp_irq_trigger & self->mp_irq_flags) {
         mp_irq_handler(self->mp_irq_obj);
     }
+    #endif
 }
 
 STATIC mp_uint_t uart_irq_trigger(mp_obj_t self_in, mp_uint_t new_trigger) {

@@ -16,6 +16,7 @@ _sidata = LOADADDR(.data);
 {
     . = ALIGN(4);
     _sdata = .;
+    *(.ram.text*)
     *(.data*)
     . = ALIGN(4);
     _edata = .;

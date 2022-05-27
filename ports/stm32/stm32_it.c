@@ -812,14 +812,14 @@ void TIM17_IRQHandler(void) {
 #endif
 
 // UART/USART IRQ handlers
-void USART1_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(USART1_IRQHandler)(void) {
     IRQ_ENTER(USART1_IRQn);
     uart_irq_handler(1);
     IRQ_EXIT(USART1_IRQn);
 }
 
 #if defined(USART2)
-void USART2_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(USART2_IRQHandler)(void) {
     IRQ_ENTER(USART2_IRQn);
     uart_irq_handler(2);
     IRQ_EXIT(USART2_IRQn);
@@ -874,7 +874,7 @@ void USART4_5_IRQHandler(void) {
 #else
 
 #if defined(USART3)
-void USART3_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(USART3_IRQHandler)(void) {
     IRQ_ENTER(USART3_IRQn);
     uart_irq_handler(3);
     IRQ_EXIT(USART3_IRQn);
@@ -882,7 +882,7 @@ void USART3_IRQHandler(void) {
 #endif
 
 #if defined(USART4)
-void USART4_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(USART4_IRQHandler)(void) {
     IRQ_ENTER(USART4_IRQn);
     uart_irq_handler(4);
     IRQ_EXIT(USART4_IRQn);
@@ -890,7 +890,7 @@ void USART4_IRQHandler(void) {
 #endif
 
 #if defined(UART4)
-void UART4_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(UART4_IRQHandler)(void) {
     IRQ_ENTER(UART4_IRQn);
     uart_irq_handler(4);
     IRQ_EXIT(UART4_IRQn);
@@ -898,7 +898,7 @@ void UART4_IRQHandler(void) {
 #endif
 
 #if defined(USART5)
-void USART5_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(USART5_IRQHandler)(void) {
     IRQ_ENTER(USART5_IRQn);
     uart_irq_handler(5);
     IRQ_EXIT(USART5_IRQn);
@@ -906,7 +906,7 @@ void USART5_IRQHandler(void) {
 #endif
 
 #if defined(UART5)
-void UART5_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(UART5_IRQHandler)(void) {
     IRQ_ENTER(UART5_IRQn);
     uart_irq_handler(5);
     IRQ_EXIT(UART5_IRQn);
@@ -914,7 +914,7 @@ void UART5_IRQHandler(void) {
 #endif
 
 #if defined(USART6)
-void USART6_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(USART6_IRQHandler)(void) {
     IRQ_ENTER(USART6_IRQn);
     uart_irq_handler(6);
     IRQ_EXIT(USART6_IRQn);
@@ -922,7 +922,7 @@ void USART6_IRQHandler(void) {
 #endif
 
 #if defined(UART7)
-void UART7_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(UART7_IRQHandler)(void) {
     IRQ_ENTER(UART7_IRQn);
     uart_irq_handler(7);
     IRQ_EXIT(UART7_IRQn);
@@ -930,7 +930,7 @@ void UART7_IRQHandler(void) {
 #endif
 
 #if defined(UART8)
-void UART8_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(UART8_IRQHandler)(void) {
     IRQ_ENTER(UART8_IRQn);
     uart_irq_handler(8);
     IRQ_EXIT(UART8_IRQn);
@@ -938,7 +938,7 @@ void UART8_IRQHandler(void) {
 #endif
 
 #if defined(UART9)
-void UART9_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(UART9_IRQHandler)(void) {
     IRQ_ENTER(UART9_IRQn);
     uart_irq_handler(9);
     IRQ_EXIT(UART9_IRQn);
@@ -946,7 +946,7 @@ void UART9_IRQHandler(void) {
 #endif
 
 #if defined(UART10)
-void UART10_IRQHandler(void) {
+void MICROPY_HW_RAM_SECTION(UART10_IRQHandler)(void) {
     IRQ_ENTER(UART10_IRQn);
     uart_irq_handler(10);
     IRQ_EXIT(UART10_IRQn);

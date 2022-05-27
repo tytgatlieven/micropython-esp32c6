@@ -320,6 +320,10 @@ void stm32_main(uint32_t reset_mode) {
     // Change IRQ vector table if configured differently
     SCB->VTOR = MICROPY_HW_VTOR;
     #endif
+    // Copy IRQ vector table to RAM and point VTOR there
+    extern uint32_t _start_init_isr, _start_isr, _end_isr;
+    memcpy(&_start_isr, &_start_init_isr, (&_end_isr - &_start_isr) * sizeof(uint32_t));
+    SCB->VTOR = (uint32_t)&_start_isr;
 
     // Enable 8-byte stack alignment for IRQ handlers, in accord with EABI
     SCB->CCR |= SCB_CCR_STKALIGN_Msk;
