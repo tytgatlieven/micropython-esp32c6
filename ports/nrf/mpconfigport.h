@@ -179,6 +179,12 @@
 #define MICROPY_PY_MACHINE_SPI      (0)
 #define MICROPY_PY_MACHINE_SPI_MIN_DELAY (0)
 
+#define MICROPY_PY_UOS_INCLUDEFILE  "ports/nrf/modules/uos/moduos.c"
+#define MICROPY_PY_UOS_SEP          (1)
+#define MICROPY_PY_UOS_SYNC         (1)
+#define MICROPY_PY_UOS_UNAME        (1)
+#define MICROPY_PY_UOS_URANDOM      (1)
+
 #ifndef MICROPY_HW_LED_COUNT
 #define MICROPY_HW_LED_COUNT        (0)
 #endif
