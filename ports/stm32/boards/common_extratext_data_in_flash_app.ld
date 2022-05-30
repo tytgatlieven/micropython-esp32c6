@@ -16,6 +16,11 @@ _sidata = LOADADDR(.data);
 {
     . = ALIGN(4);
     _sdata = .;
+    *(.text.HAL_GetTick)
+    *(.text.FLASH_PageErase)
+    *(.text.FLASH_WaitForLastOperation)
+    *(.text.HAL_FLASHEx_Erase)
+    *(.ram.text*)
     *(.data*)
     . = ALIGN(4);
     _edata = .;

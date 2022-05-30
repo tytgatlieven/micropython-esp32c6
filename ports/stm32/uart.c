@@ -1120,6 +1120,10 @@ void MICROPY_HW_RAM_SECTION(uart_irq_handler)(mp_uint_t uart_id) {
     bool rxne_is_set = self->mp_irq_flags & USART_ISR_RXNE;
     #endif
 
+    if (self->mp_irq_flags & USART_ISR_ORE) {
+        __asm__ ("bkpt #0");
+    }
+
     // Process RXNE flag, either read the character or disable the interrupt.
     if (rxne_is_set) {
         if (self->read_buf_len != 0) {

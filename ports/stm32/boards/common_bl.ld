@@ -19,11 +19,16 @@ SECTIONS
     .isr_vector :
     {
         . = ALIGN(4);
+        _start_isr = .;
         KEEP(*(.isr_vector)) /* Startup code */
-
+        _end_isr = .;
         . = ALIGN(4);
-    } >FLASH_APP
+    } >RAM AT >FLASH_APP
+    _start_init_isr = LOADADDR(.isr_vector); /* Used by the start-up code to initialise data */
 
+    INCLUDE common_extratext_data_in_flash_app.ld
+    INCLUDE common_bss_heap_stack.ld
+    
     /* The program code and other data goes into FLASH */
     .text :
     {
@@ -37,6 +42,4 @@ SECTIONS
         _etext = .;        /* define a global symbol at end of code */
     } >FLASH_APP
 
-    INCLUDE common_extratext_data_in_flash_app.ld
-    INCLUDE common_bss_heap_stack.ld
 }
