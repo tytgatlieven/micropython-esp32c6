@@ -16,6 +16,9 @@ _sidata = LOADADDR(.data);
 {
     . = ALIGN(4);
     _sdata = .;
+    . += SIZEOF(.isr_vector);
+    _sdata2 = .;
+    *(.ram.text*)
     *(.data*)
     . = ALIGN(4);
     _edata = .;

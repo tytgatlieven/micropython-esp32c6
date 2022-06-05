@@ -79,4 +79,12 @@
 // HAL parameter assertions are disabled
 #define assert_param(expr) ((void)0)
 
+
+// #include <stdint.h>
+#define MICROPY_HW_RAM_SECTION(n) __attribute__((section(".ram.text." #n))) n
+
+uint32_t MICROPY_HW_RAM_SECTION(HAL_GetTick)(void);
+void MICROPY_HW_RAM_SECTION(FLASH_PageErase)(uint32_t Page);
+HAL_StatusTypeDef MICROPY_HW_RAM_SECTION(FLASH_WaitForLastOperation)(uint32_t Timeout);
+
 #endif // MICROPY_INCLUDED_STM32WBXX_HAL_CONF_BASE_H
