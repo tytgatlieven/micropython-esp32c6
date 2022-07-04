@@ -333,6 +333,14 @@ bool mp_obj_get_int_maybe(mp_const_obj_t arg, mp_int_t *value) {
     } else if (mp_obj_is_type(arg, &mp_type_int)) {
         *value = mp_obj_int_get_checked(arg);
     } else {
+        // Call __index__() function if it exists.
+        mp_obj_t dest[2];
+        mp_load_method_maybe(arg, MP_QSTR___index__, dest);
+        if (dest[0] != MP_OBJ_NULL) {
+            // __index__ should return an int, re-run current function to convert it.
+            return mp_obj_get_int_maybe(mp_call_method_n_kw(0, 0, dest), value);
+        }
+        // No conversion to int available.
         return false;
     }
     return true;
@@ -358,11 +366,20 @@ bool mp_obj_get_float_maybe(mp_obj_t arg, mp_float_t *value) {
         // Call __float__() function if it exists.
         mp_obj_t dest[2];
         mp_load_method_maybe(arg, MP_QSTR___float__, dest);
-        if (dest[0] == MP_OBJ_NULL) {
-            // No conversion to float available
-            return false;
+        if (dest[0] != MP_OBJ_NULL) {
+            // __float__ present.
+            val = mp_obj_float_get(mp_call_method_n_kw(0, 0, dest));
+        } else {
+            // try __index__
+            mp_load_method_maybe(arg, MP_QSTR___index__, dest);
+            if (dest[0] != MP_OBJ_NULL) {
+                // __index__ should return an int, re-run current function to convert it.
+                return mp_obj_get_float_maybe(mp_call_method_n_kw(0, 0, dest), value);
+            } else {
+                // No conversion to float available.
+                return false;
+            }
         }
-        val = mp_obj_float_get(mp_call_method_n_kw(0, 0, dest));
     }
 
     *value = val;

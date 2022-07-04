@@ -37,8 +37,9 @@ class Cud():
     def __floordiv__(self, other):
         print("__floordiv__ called")
 
-    def __index__(self, other):
+    def __index__(self):
         print("__index__ called")
+        return 1
 
     def __inv__(self):
         print("__inv__ called")
@@ -112,6 +113,7 @@ cud1 > cud2
 cud1 + cud2
 cud1 - cud2
 print(int(cud1))
+print("abc"[cud1:])
 
 class BadInt:
     def __int__(self):
