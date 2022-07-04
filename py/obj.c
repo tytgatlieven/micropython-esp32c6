@@ -67,10 +67,10 @@ const mp_obj_type_t *MICROPY_WRAP_MP_OBJ_GET_TYPE(mp_obj_get_type)(mp_const_obj_
     } else if (mp_obj_is_obj(o_in)) {
         const mp_obj_base_t *o = MP_OBJ_TO_PTR(o_in);
         return o->type;
-    #if MICROPY_PY_BUILTINS_FLOAT
+        #if MICROPY_PY_BUILTINS_FLOAT
     } else if ((((mp_uint_t)(o_in)) & 0xff800007) != 0x00000006) {
         return &mp_type_float;
-    #endif
+        #endif
     } else {
         static const mp_obj_type_t *const types[] = {
             &mp_type_str, &mp_type_NoneType, &mp_type_str, &mp_type_bool,
@@ -89,11 +89,11 @@ const mp_obj_type_t *MICROPY_WRAP_MP_OBJ_GET_TYPE(mp_obj_get_type)(mp_const_obj_
     } else if (mp_obj_is_float(o_in)) {
         return &mp_type_float;
         #endif
-    #if MICROPY_OBJ_IMMEDIATE_OBJS
+        #if MICROPY_OBJ_IMMEDIATE_OBJS
     } else if (mp_obj_is_immediate_obj(o_in)) {
         static const mp_obj_type_t *const types[2] = {&mp_type_NoneType, &mp_type_bool};
         return types[MP_OBJ_IMMEDIATE_OBJ_VALUE(o_in) & 1];
-    #endif
+        #endif
     } else {
         const mp_obj_base_t *o = MP_OBJ_TO_PTR(o_in);
         return o->type;
@@ -225,20 +225,20 @@ mp_obj_t mp_obj_equal_not_equal(mp_binary_op_t op, mp_obj_t o1, mp_obj_t o2) {
         if (mp_obj_is_str(o2)) {
             // both strings, use special function
             return mp_obj_str_equal(o1, o2) ? local_true : local_false;
-        #if MICROPY_PY_STR_BYTES_CMP_WARN
+            #if MICROPY_PY_STR_BYTES_CMP_WARN
         } else if (mp_obj_is_type(o2, &mp_type_bytes)) {
         str_bytes_cmp:
             mp_warning(MP_WARN_CAT(BytesWarning), "Comparison between bytes and str");
             return local_false;
-        #endif
+            #endif
         } else {
             goto skip_one_pass;
         }
-    #if MICROPY_PY_STR_BYTES_CMP_WARN
+        #if MICROPY_PY_STR_BYTES_CMP_WARN
     } else if (mp_obj_is_str(o2) && mp_obj_is_type(o1, &mp_type_bytes)) {
         // o1 is not a string (else caught above), so the objects are not equal
         goto str_bytes_cmp;
-    #endif
+        #endif
     }
 
     // fast path for small ints
@@ -348,14 +348,21 @@ bool mp_obj_get_float_maybe(mp_obj_t arg, mp_float_t *value) {
         val = 1;
     } else if (mp_obj_is_small_int(arg)) {
         val = (mp_float_t)MP_OBJ_SMALL_INT_VALUE(arg);
-    #if MICROPY_LONGINT_IMPL != MICROPY_LONGINT_IMPL_NONE
+        #if MICROPY_LONGINT_IMPL != MICROPY_LONGINT_IMPL_NONE
     } else if (mp_obj_is_type(arg, &mp_type_int)) {
         val = mp_obj_int_as_float_impl(arg);
-    #endif
+        #endif
     } else if (mp_obj_is_float(arg)) {
         val = mp_obj_float_get(arg);
     } else {
-        return false;
+        // Call __float__() function if it exists.
+        mp_obj_t dest[2];
+        mp_load_method_maybe(arg, MP_QSTR___float__, dest);
+        if (dest[0] == MP_OBJ_NULL) {
+            // No conversion to float available
+            return false;
+        }
+        val = mp_obj_float_get(mp_call_method_n_kw(0, 0, dest));
     }
 
     *value = val;
@@ -388,11 +395,11 @@ bool mp_obj_get_complex_maybe(mp_obj_t arg, mp_float_t *real, mp_float_t *imag) 
     } else if (mp_obj_is_small_int(arg)) {
         *real = (mp_float_t)MP_OBJ_SMALL_INT_VALUE(arg);
         *imag = 0;
-    #if MICROPY_LONGINT_IMPL != MICROPY_LONGINT_IMPL_NONE
+        #if MICROPY_LONGINT_IMPL != MICROPY_LONGINT_IMPL_NONE
     } else if (mp_obj_is_type(arg, &mp_type_int)) {
         *real = mp_obj_int_as_float_impl(arg);
         *imag = 0;
-    #endif
+        #endif
     } else if (mp_obj_is_float(arg)) {
         *real = mp_obj_float_get(arg);
         *imag = 0;
