@@ -37,8 +37,8 @@ INC +=  -I$(TOP)
 INC += -I$(BUILD)
 
 # compiler settings
-CWARN = -Wall -Werror
-CWARN += -Wextra -Wno-unused-parameter -Wpointer-arith -Wdouble-promotion -Wfloat-conversion
+CWARN = -Wall #-Werror
+CWARN += -Wextra -Wno-unused-parameter -Wpointer-arith
 CFLAGS += $(INC) $(CWARN) -std=gnu99 -DUNIX $(CFLAGS_MOD) $(COPT) -I$(VARIANT_DIR) $(CFLAGS_EXTRA)
 
 # Debugging/Optimization
@@ -100,7 +100,8 @@ else
 # Use gcc syntax for map file
 LDFLAGS_ARCH = -Wl,-Map=$@.map,--cref -Wl,--gc-sections
 endif
-LDFLAGS += $(LDFLAGS_MOD) $(LDFLAGS_ARCH) -lm $(LDFLAGS_EXTRA)
+LDFLAGS += $(LDFLAGS_MOD) $(LDFLAGS_ARCH) -lm 
+$(LDFLAGS_EXTRA)
 
 # Flags to link with pthread library
 LIBPTHREAD = -lpthread
@@ -127,10 +128,18 @@ endif
 ifeq ($(MICROPY_PY_SOCKET),1)
 CFLAGS_MOD += -DMICROPY_PY_SOCKET=1
 SRC_MOD += modusocket.c
+ifeq ($(CROSS_COMPILE),ntoarmv7-)
+LDFLAGS_MOD += -Wl,-R/mnt/app/armle/lib -Wl,-R/lib -lsocket
+endif
 endif
 ifeq ($(MICROPY_PY_THREAD),1)
 CFLAGS_MOD += -DMICROPY_PY_THREAD=1 -DMICROPY_PY_THREAD_GIL=0
+
+ifneq ($(CROSS_COMPILE),ntoarmv7-)
 LDFLAGS_MOD += $(LIBPTHREAD)
+else
+# on qnx pthread is included in libc
+endif
 endif
 
 ifeq ($(MICROPY_PY_USSL),1)
@@ -212,13 +221,18 @@ LIBFFI_CFLAGS_MOD := -I$(shell ls -1d $(BUILD)/lib/libffi/out/lib/libffi-*/inclu
   LIBFFI_LDFLAGS_MOD = $(BUILD)/lib/libffi/out/lib/libffi.a
  endif
 else
-# Use system version of libffi.
-LIBFFI_CFLAGS_MOD := $(shell pkg-config --cflags libffi)
-LIBFFI_LDFLAGS_MOD := $(shell pkg-config --libs libffi)
+#LIBFFI_CFLAGS_MOD := $(shell pkg-config --static --cflags libffi)
+#LIBFFI_LDFLAGS_MOD := $(shell pkg-config --static --libs libffi)
+##PKG_CONFIG_PATH=/mnt/app/pkg/lib/pkgconfig pkg-config --static --cflags libffi
+LIBFFI_CFLAGS_MOD := -I/mnt/app/pkg/include
+LIBFFI_LDFLAGS_MOD := -L/mnt/app/pkg/lib -l:libffi.a
 endif
 
+
+ifneq ($(CROSS_COMPILE),ntoarmv7-)
 ifeq ($(UNAME_S),Linux)
 LIBFFI_LDFLAGS_MOD += -ldl
+endif
 endif
 
 CFLAGS_MOD += $(LIBFFI_CFLAGS_MOD) -DMICROPY_PY_FFI=1

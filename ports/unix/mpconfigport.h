@@ -306,9 +306,9 @@ static inline unsigned long mp_urandom_seed_init(void) {
 // the macros [...], _DIRENT_HAVE_D_TYPE are defined."
 // Other libc's don't define it, but proactively assume that dirent->d_type
 // is available on a modern *nix system.
-#ifndef _DIRENT_HAVE_D_TYPE
-#define _DIRENT_HAVE_D_TYPE (1)
-#endif
+// #ifndef _DIRENT_HAVE_D_TYPE
+// #define _DIRENT_HAVE_D_TYPE (1)
+// #endif
 // This macro is not provided by glibc but we need it so ports that don't have
 // dirent->d_ino can disable the use of this field.
 #ifndef _DIRENT_HAVE_D_INO

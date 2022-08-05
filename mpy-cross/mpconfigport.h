@@ -31,7 +31,7 @@
 #define MICROPY_PERSISTENT_CODE_SAVE (1)
 
 #ifndef MICROPY_PERSISTENT_CODE_SAVE_FILE
-#if defined(__i386__) || defined(__x86_64__) || defined(_WIN32) || defined(__unix__) || defined(__APPLE__)
+#if defined(__i386__) || defined(__x86_64__) || defined(_WIN32) || defined(__unix__) || defined(__APPLE__) || defined(__QNX__)
 #define MICROPY_PERSISTENT_CODE_SAVE_FILE (1)
 #else
 #define MICROPY_PERSISTENT_CODE_SAVE_FILE (0)
@@ -119,7 +119,7 @@ typedef long mp_off_t;
 #define MP_PLAT_PRINT_STRN(str, len) (void)0
 
 // We need to provide a declaration/definition of alloca()
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__)  || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__QNX__)
 #include <stdlib.h>
 #elif defined(_WIN32)
 #include <malloc.h>
