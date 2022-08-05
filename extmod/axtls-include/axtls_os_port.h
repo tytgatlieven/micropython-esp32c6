@@ -27,6 +27,7 @@
 #define AXTLS_OS_PORT_H
 
 #include <errno.h>
+#include <sys/time.h>
 #include "py/stream.h"
 #include "lib/crypto-algorithms/sha256.h"
 

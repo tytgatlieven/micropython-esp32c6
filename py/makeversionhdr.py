@@ -63,6 +63,10 @@ def get_version_info_from_git():
 
 
 def get_version_info_from_docs_conf():
+    print(os.path.join(os.path.dirname(sys.argv[0]), "..", "docs", "conf.py"))
+    for key in sorted(os.environ):
+      print("export %s=%s" % (key, os.environ[key]))
+    print(sys.executable)
     with open(os.path.join(os.path.dirname(sys.argv[0]), "..", "docs", "conf.py")) as f:
         for line in f:
             if line.startswith("version = release = '"):

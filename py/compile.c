@@ -3429,7 +3429,7 @@ STATIC
 #endif
 mp_compiled_module_t mp_compile_to_raw_code(mp_parse_tree_t *parse_tree, qstr source_file, bool is_repl, mp_module_context_t *context) {
     // put compiler state on the stack, it's relatively small
-    compiler_t comp_state = {0};
+    compiler_t comp_state = {0,};
     compiler_t *comp = &comp_state;
 
     comp->is_repl = is_repl;
