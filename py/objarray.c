@@ -53,6 +53,7 @@
 #if MICROPY_PY_BUILTINS_MEMORYVIEW
 #define TYPECODE_MASK (0x7f)
 #define memview_offset free
+#define memview_offset_max ((1LL << (8 * sizeof(size_t) - 8)) - 1)
 #else
 // make (& TYPECODE_MASK) a null operation if memorview not enabled
 #define TYPECODE_MASK (~(size_t)0)
@@ -514,6 +515,13 @@ STATIC mp_obj_t array_subscr(mp_obj_t self_in, mp_obj_t index_in, mp_obj_t value
             assert(sz > 0);
             #if MICROPY_PY_BUILTINS_MEMORYVIEW
             if (o->base.type == &mp_type_memoryview) {
+                if (slice.start > memview_offset_max) {
+                    #if (size_t == uint32_t)
+                    mp_raise_ValueError(MP_ERROR_TEXT("memoryview slice start above 0xFFFFFF not supported."));
+                    #else
+                    mp_raise_ValueError(MP_ERROR_TEXT("memoryview slice start above 0xFFFFFFFFFFFFFF not supported."));
+                    #endif
+                }
                 res = m_new_obj(mp_obj_array_t);
                 *res = *o;
                 res->memview_offset += slice.start;
