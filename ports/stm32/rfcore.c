@@ -503,7 +503,7 @@ STATIC ssize_t tl_sys_hci_cmd_resp(uint16_t opcode, const uint8_t *buf, size_t l
     return tl_sys_wait_ack(ipcc_membuf_sys_cmd_buf, timeout_ms);
 }
 
-STATIC int tl_ble_wait_resp(void) {
+STATIC ssize_t tl_ble_wait_resp(parse_hci_info_t *parse) {
     uint32_t t0 = mp_hal_ticks_ms();
     while (!LL_C2_IPCC_IsActiveFlag_CHx(IPCC, IPCC_CH_BLE)) {
         if (mp_hal_ticks_ms() - t0 > BLE_ACK_TIMEOUT_MS) {
@@ -513,16 +513,15 @@ STATIC int tl_ble_wait_resp(void) {
     }
 
     // C2 set IPCC flag -- process the data, clear the flag, and re-enable IRQs.
-    tl_check_msg(&ipcc_mem_ble_evt_queue, IPCC_CH_BLE, NULL);
-    return 0;
+    return tl_check_msg(&ipcc_mem_ble_evt_queue, IPCC_CH_BLE, parse);
 }
 
 // Synchronously send a BLE command.
-STATIC void tl_ble_hci_cmd_resp(uint16_t opcode, const uint8_t *buf, size_t len) {
+STATIC ssize_t tl_ble_hci_cmd_resp(uint16_t opcode, const uint8_t *buf, size_t len) {
     // Poll for completion rather than wait for IRQ->scheduler.
     LL_C1_IPCC_DisableReceiveChannel(IPCC, IPCC_CH_BLE);
     tl_hci_cmd(ipcc_membuf_ble_cmd_buf, IPCC_CH_BLE, HCI_KIND_BT_CMD, opcode, buf, len);
-    tl_ble_wait_resp();
+    return tl_ble_wait_resp(NULL);
 }
 
 /******************************************************************************/
@@ -761,5 +760,41 @@ STATIC mp_obj_t rfcore_sys_hci(size_t n_args, const mp_obj_t *args) {
     return mp_obj_new_bytes(ipcc_membuf_sys_cmd_buf, len);
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(rfcore_sys_hci_obj, 3, 4, rfcore_sys_hci);
+
+STATIC void rfcore_ble_hci_response_to_buffer(void *env, const uint8_t *buf, size_t len) {
+    // mp_buffer_info_t *respbufinfo = (mp_buffer_info_t *)env;
+    DEBUG_printf("rfcore_ble_hci_response_to_buffer len 0x%x\n", len);
+    mp_obj_t *rsp = (mp_obj_t *)env;
+    *rsp = mp_obj_new_bytes(buf, len);
+}
+
+STATIC mp_obj_t rfcore_ble_hci(size_t n_args, const mp_obj_t *args) {
+    if (ipcc_mem_dev_info_tab.fus.table_state == MAGIC_IPCC_MEM_INCORRECT) {
+        mp_raise_OSError(MP_EINVAL);
+    }
+    mp_buffer_info_t bufinfo = {0};
+    // Can accept either just a raw buffer to send, or (ogf, ocf, buffer, <timeout>) to assemble and send.
+    if (mp_get_buffer(args[0], &bufinfo, MP_BUFFER_READ)) {
+        // Poll for completion rather than wait for IRQ->scheduler.
+        LL_C1_IPCC_DisableReceiveChannel(IPCC, IPCC_CH_BLE);
+
+        rfcore_ble_hci_cmd(bufinfo.len, bufinfo.buf);
+
+        mp_obj_t rsp = mp_const_none;
+        parse_hci_info_t parse = { rfcore_ble_hci_response_to_buffer, &rsp, false };
+        tl_ble_wait_resp(&parse);
+        return rsp;
+    } else {
+        mp_int_t ogf = mp_obj_get_int(args[0]);
+        mp_int_t ocf = mp_obj_get_int(args[1]);
+        mp_get_buffer_raise(args[2], &bufinfo, MP_BUFFER_READ);
+        size_t len = tl_ble_hci_cmd_resp(HCI_OPCODE(ogf, ocf), bufinfo.buf, bufinfo.len);
+        if (len < 0) {
+            mp_raise_OSError(-len);
+        }
+        return mp_obj_new_bytes(ipcc_membuf_ble_cmd_buf, len);
+    }
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(rfcore_ble_hci_obj, 1, 4, rfcore_ble_hci);
 
 #endif // defined(STM32WB)

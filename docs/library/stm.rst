@@ -102,3 +102,11 @@ the second CPU, the RF core.
     Execute a HCI command on the SYS channel.  The execution is synchronous.
 
     Returns a bytes object with the result of the SYS command.
+
+.. function:: rfcore_ble_hci(ogf, ocf, data) or rfcore_ble_hci(buffer)
+
+    Execute a HCI command on the BLE channel.  The execution is synchronous.
+    Can either specify ogf and ocf as integers along with bytes data to assemble hci packet
+    or pass a byte/bytearray with pre-formatted hci packet.
+
+    Returns a bytes object with the result of the BLE command.
