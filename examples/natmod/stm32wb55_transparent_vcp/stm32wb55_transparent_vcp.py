@@ -7,9 +7,16 @@ def start():
     from bluetooth import BLE
     from pyb import LED
 
+    ble = BLE()
+
+    try:
+        ble.hci_cmd
+    except AttributeError:
+        raise AttributeError("micropython board/build with MICROPY_PY_BLUETOOTH_ENABLE_HCI_CMD enabled required.")
+
     # Ensure rfcore has been started at least once, then turn off bluetooth
-    BLE().active(1)
-    BLE().active(0)
+    ble.active(1)
+    ble.active(0)
     # Disable the ctrl-c interrupt
     import os
 
@@ -24,7 +31,7 @@ def start():
             LED(3).off()
 
     # _start(sys.stdin, sys.stdout, callback)
-    _start(usb, usb, callback)
+    _start(ble, usb, usb, callback)
 
 
 # BLE().active(0)

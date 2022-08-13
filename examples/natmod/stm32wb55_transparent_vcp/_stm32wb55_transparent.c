@@ -9,7 +9,7 @@
 // Based on STM32CubeWB\Projects\P-NUCLEO-WB55.USBDongle\Applications\BLE\BLE_TransparentModeVCP
 
 // Don't enable this if stdio is used for transp comms.
-#define DEBUG_printf(...)  // mp_printf(&mp_plat_print, "rfcore_transp: " __VA_ARGS__)
+#define DEBUG_printf(...)  mp_printf(&mp_plat_print, "rfcore_transp: " __VA_ARGS__)
 
 // TODO Check ble_init_params vs SHCI_C2_BLE_Init /
 // https://github.com/STMicroelectronics/STM32CubeWB/blob/83aacadecbd5136ad3194f39e002ff50a5439ad9/Projects/STM32WB5MM-DK/Applications/BLE/BLE_Mesh_ThermometerSensor/Core/Inc/app_conf.h#L234
@@ -27,6 +27,10 @@
 #define HCI_KIND_VENDOR_EVENT (0x12)
 #define HCI_KIND_LOCAL_CMD (0x20) // Used by CubeMonitor to query the device
 #define HCI_KIND_LOCAL_RSP (0x21)
+
+/* Get the OGF and OCF from the opcode in the command */
+#define BLE_HCI_OGF(opcode)                 (((opcode) >> 10) & 0x003F)
+#define BLE_HCI_OCF(opcode)                 ((opcode) & 0x03FF)
 
 #define PACKED_STRUCT struct __attribute__((packed))
 
@@ -523,7 +527,11 @@ STATIC void local_hci_cmd(size_t len, const uint8_t *buffer) {
 }
 
 
-STATIC mp_obj_t rfcore_transparent(mp_obj_t stream_in, mp_obj_t stream_out, mp_obj_t callback) {
+STATIC mp_obj_t rfcore_transparent(size_t n_args, const mp_obj_t *args) {
+    mp_obj_t ble = args[0];
+    mp_obj_t stream_in = args[1];
+    mp_obj_t stream_out = args[2];
+    mp_obj_t callback = args[3];
     // Make sure we got a stream object
     stream_in_p = mp_get_stream_raise(stream_in, MP_STREAM_OP_READ | MP_STREAM_OP_IOCTL);
     stream_in_o = stream_in;
@@ -533,10 +541,12 @@ STATIC mp_obj_t rfcore_transparent(mp_obj_t stream_in, mp_obj_t stream_out, mp_o
 
     callback_o = callback;
 
-    mp_obj_t stm_module = mp_import_name(MP_QSTR_stm, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
-    mp_obj_t rfcore_ble_hci_obj = mp_import_from(stm_module, MP_QSTR_rfcore_ble_hci);
+    // mp_obj_t stm_module = mp_import_name(MP_QSTR_stm, mp_const_none, MP_OBJ_NEW_SMALL_INT(0));
+    // mp_obj_t rfcore_ble_hci_obj = mp_import_from(stm_module, MP_QSTR_rfcore_ble_hci);
 
     uint8_t buf[1024];
+    uint8_t rsp[255];
+    mp_obj_t rsp_ba = mp_obj_new_bytearray_by_ref(sizeof(rsp), rsp);
     size_t rx = 0;
     size_t len = 0;
     int state = 0;
@@ -551,18 +561,31 @@ STATIC mp_obj_t rfcore_transparent(mp_obj_t stream_in, mp_obj_t stream_out, mp_o
                 local_hci_cmd(rx, buf);
             } else {
                 // forward packet to rfcore
-                DEBUG_printf("rfcore_ble_hci_cmd\n");
-                mp_obj_t cmd = mp_obj_new_bytes(buf, rx);
-                mp_obj_t rsp = mp_call_function_n_kw(rfcore_ble_hci_obj, 1, 0, &cmd);
-                if (rsp != mp_const_none) {
+
+                uint16_t opcode = buf[1] | (((uint16_t)buf[2]) << 8);
+                DEBUG_printf("rfcore_ble_hci_cmd opcode 0x%x\n", opcode);
+                DEBUG_printf("rfcore_ble_hci_cmd len 0x%x\n", buf[3]);
+                mp_obj_t hci_cmd[] = {
+                    NULL, NULL, // fn, self
+                    MP_OBJ_NEW_SMALL_INT(BLE_HCI_OGF(opcode)),
+                    MP_OBJ_NEW_SMALL_INT(BLE_HCI_OCF(opcode)),
+                    mp_obj_new_bytes(&buf[4], buf[3]), // buf
+                    rsp_ba};
+                mp_load_method(ble, MP_QSTR_hci_cmd, hci_cmd);
+                mp_obj_t status = mp_call_function_n_kw(hci_cmd[0], 5, 0, &hci_cmd[1]);
+                // mp_obj_t status = mp_call_method_n_kw(4, 0, hci_cmd);
+                if (mp_obj_get_int(status) == 0) {
                     mp_buffer_info_t bufinfo = {0};
-                    mp_get_buffer_raise(rsp, &bufinfo, MP_BUFFER_READ);
-                    DEBUG_printf("rsp: len 0x%x", bufinfo.len);
+                    mp_get_buffer_raise(rsp_ba, &bufinfo, MP_BUFFER_READ);
+                    DEBUG_printf("rsp: len 0x%x\n", bufinfo.len);
+                    DEBUG_printf("rsp: 0 0x%x\n", ((char*)bufinfo.buf)[0]);
+                    DEBUG_printf("rsp: 1 0x%x\n", ((char*)bufinfo.buf)[1]);
+                    DEBUG_printf("rsp: 2 0x%x\n", ((char*)bufinfo.buf)[2]);
                     mpstream_write((const char *)bufinfo.buf, bufinfo.len);
 
                     mpy_cb(false);
                 } else {
-                    DEBUG_printf("rsp: None");
+                    DEBUG_printf("rsp: 0x%x", mp_obj_get_int(status));
                 }
             }
 
@@ -624,7 +647,7 @@ STATIC mp_obj_t rfcore_transparent(mp_obj_t stream_in, mp_obj_t stream_out, mp_o
 
     return mp_const_none;
 }
-MP_DEFINE_CONST_FUN_OBJ_3(rfcore_transparent_obj, rfcore_transparent);
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(rfcore_transparent_obj, 4, 4, rfcore_transparent);
 
 
 mp_obj_t mpy_init(mp_obj_fun_bc_t *self, size_t n_args, size_t n_kw, mp_obj_t *args) {
