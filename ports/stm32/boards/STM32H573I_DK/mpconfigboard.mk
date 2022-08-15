@@ -13,3 +13,5 @@ else
 LD_FILES = boards/stm32h573xi.ld boards/common_basic.ld
 TEXT0_ADDR = 0x08000000
 endif
+
+MICROPY_USE_RAM_ISR_UART_FLASH_FN = 1

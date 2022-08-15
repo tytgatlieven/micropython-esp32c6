@@ -6,6 +6,7 @@ LD_FILES = boards/stm32l072xz.ld boards/common_basic.ld
 
 # MicroPython settings
 MICROPY_VFS_FAT = 0
+MICROPY_USE_RAM_ISR_UART_FLASH_FN = 1
 
 # Don't include default frozen modules because MCU is tight on flash space
 FROZEN_MANIFEST ?=

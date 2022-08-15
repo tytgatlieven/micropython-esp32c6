@@ -16,3 +16,5 @@ LD_FILES = boards/stm32h7b3.ld boards/common_ifs.ld
 TEXT0_ADDR = 0x08000000
 TEXT1_ADDR = 0x08040000
 endif
+
+MICROPY_USE_RAM_ISR_UART_FLASH_FN = 1
