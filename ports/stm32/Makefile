@@ -96,7 +96,7 @@ CFLAGS += -fsingle-precision-constant
 endif
 endif
 
-LDFLAGS = -nostdlib -L $(LD_DIR) $(addprefix -T,$(LD_FILES)) -Wl,-Map=$(@:.elf=.map) -Wl,--cref
+LDFLAGS = -nostdlib -L $(LD_DIR) $(addprefix -T,$(PLD_FILES)) -Wl,-Map=$(@:.elf=.map) -Wl,--cref
 LDFLAGS += -Wl,--defsym=_estack_reserve=8
 LIBS += "$(shell $(CC) $(CFLAGS) -print-libgcc-file-name)"
 
@@ -335,7 +335,7 @@ SRC_CXX += \
 SRC_O += \
 	$(STARTUP_FILE) \
 	$(SYSTEM_FILE)
-    
+
 ifeq ($(MCU_SERIES),$(filter $(MCU_SERIES),f0 g0 l0))
 CSUPEROPT = -Os # save some code space
 SRC_O += \
@@ -531,6 +531,9 @@ DRIVERS_SRC_C += drivers/cyw43/cywbt.c
 endif
 
 endif
+
+# Run linker files through pre-processor to enable #ifdef etc.
+PLD_FILES += $(addprefix $(BUILD)/,$(LD_FILES))
 
 # SRC_O should be placed first to work around this LTO bug with binutils <2.35:
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=83967

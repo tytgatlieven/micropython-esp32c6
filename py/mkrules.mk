@@ -25,6 +25,14 @@ QSTR_GEN_CFLAGS += $(QSTR_GEN_FLAGS)
 QSTR_GEN_CXXFLAGS := $(CXXFLAGS)
 QSTR_GEN_CXXFLAGS += $(QSTR_GEN_FLAGS)
 
+# Run linker files through pre-processor to enable #ifdef etc.
+# $(OBJ): $(PLD_FILES)
+vpath %.ld . $(TOP) $(USER_C_MODULES)
+$(BUILD)/%.ld: %.ld
+	$(ECHO) "Process $<"
+	@mkdir -p $$(dirname $@)
+	$(Q)$(CC) $(CFLAGS) -CC -Wno-error=comment -Wno-comment -E -P -o $@ -x c-header $<
+
 # This file expects that OBJ contains a list of all of the object files.
 # The directory portion of each object file is used to locate the source
 # and should not contain any ..'s but rather be relative to the top of the
@@ -96,7 +104,7 @@ $(BUILD)/%.pp: %.c
 # the right .o's to get recompiled if the generated.h file changes. Adding
 # an order-only dependency to all of the .o's will cause the generated .h
 # to get built before we try to compile any of them.
-$(OBJ): | $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/mpversion.h $(OBJ_EXTRA_ORDER_DEPS)
+$(OBJ): | $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/mpversion.h $(OBJ_EXTRA_ORDER_DEPS) $(PLD_FILES)
 
 # The logic for qstr regeneration (applied by makeqstrdefs.py) is:
 # - if anything in QSTR_GLOBAL_DEPENDENCIES is newer, then process all source files ($^)
@@ -196,9 +204,10 @@ ifneq (,$(findstring mingw,$(COMPILER_TARGET)))
 PROG := $(PROG).exe
 endif
 
+
 all: $(BUILD)/$(PROG)
 
-$(BUILD)/$(PROG): $(OBJ)
+$(BUILD)/$(PROG): $(OBJ) $(PLD_FILES)
 	$(ECHO) "LINK $@"
 # Do not pass COPT here - it's *C* compiler optimizations. For example,
 # we may want to compile using Thumb, but link with non-Thumb libc.
