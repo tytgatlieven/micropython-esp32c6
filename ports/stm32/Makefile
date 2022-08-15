@@ -132,7 +132,7 @@ CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_FLOAT
 CFLAGS += -fsingle-precision-constant
 endif
 
-LDFLAGS += -nostdlib -L $(LD_DIR) $(addprefix -T,$(LD_FILES)) -Wl,-Map=$(@:.elf=.map) -Wl,--cref
+LDFLAGS += -nostdlib -L $(LD_DIR) -L $(BUILD) $(addprefix -T,$(LD_FILES)) -Wl,-Map=$(@:.elf=.map) -Wl,--cref
 LDFLAGS += -Wl,--defsym=_estack_reserve=8
 LIBS += "$(shell $(CC) $(CFLAGS) -print-libgcc-file-name)"
 
@@ -366,7 +366,7 @@ SRC_C += \
 SRC_O += \
 	$(STARTUP_FILE) \
 	$(SYSTEM_FILE)
-    
+
 ifeq ($(MCU_SERIES),$(filter $(MCU_SERIES),f0 g0 l0))
 CSUPEROPT = -Os # save some code space
 SRC_O += \
@@ -501,6 +501,10 @@ endif
 
 endif # MICROPY_PY_BLUETOOTH
 
+ifeq ($(MICROPY_USE_RAM_ISR_UART_FLASH_FN),1)
+CFLAGS += -DMICROPY_USE_RAM_ISR_UART_FLASH_FN=1
+endif
+
 # SRC_O should be placed first to work around this LTO bug with binutils <2.35:
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=83967
 OBJ += $(addprefix $(BUILD)/, $(SRC_O))
@@ -520,7 +524,8 @@ OBJ += $(GEN_PINS_SRC:.c=.o)
 # Don't use -O3 with this file because gcc tries to optimise memset in terms of itself.
 $(BUILD)/shared/libc/string0.o: COPT += -O2
 
-# We put several files into the first 16K section with the ISRs.
+ifneq ($(MICROPY_USE_RAM_ISR_UART_FLASH_FN),1)
+# If MBOOT or RAM_IFS is not used we put several files into the first 16K section with the ISRs.
 # If we compile these using -O0 then it won't fit. So if you really want these
 # to be compiled with -O0, then edit boards/common.ld (in the .isr_vector section)
 # and comment out the following lines.
@@ -529,6 +534,7 @@ $(filter $(PY_BUILD)/../extmod/vfs_fat_%.o, $(PY_O)): COPT += -Os
 $(PY_BUILD)/formatfloat.o: COPT += -Os
 $(PY_BUILD)/parsenum.o: COPT += -Os
 $(PY_BUILD)/mpprint.o: COPT += -Os
+endif
 
 all: $(TOP)/lib/stm32lib/README.md all_main $(BUILD)/firmware.hex
 
@@ -612,7 +618,7 @@ TEXT0_ADDR ?= 0x08000000
 ifeq ($(TEXT1_ADDR),)
 # No TEXT1_ADDR given so put all firmware at TEXT0_ADDR location
 
-TEXT0_SECTIONS ?= .isr_vector .text .data .ARM
+TEXT0_SECTIONS ?= .isr_vector .isr_extratext .text .data .ARM
 
 deploy-stlink: $(BUILD)/firmware.bin
 	$(call RUN_STLINK,$^,$(TEXT0_ADDR))
@@ -629,7 +635,7 @@ $(BUILD)/firmware.dfu: $(BUILD)/firmware.bin
 else
 # TEXT0_ADDR and TEXT1_ADDR are specified so split firmware between these locations
 
-TEXT0_SECTIONS ?= .isr_vector
+TEXT0_SECTIONS ?= .isr_vector .isr_extratext
 TEXT1_SECTIONS ?= .text .data .ARM
 
 deploy-stlink: $(BUILD)/firmware0.bin $(BUILD)/firmware1.bin
@@ -710,5 +716,23 @@ $(GEN_CDCINF_HEADER): $(GEN_CDCINF_FILE) $(FILE2H) | $(HEADER_BUILD)
 $(GEN_CDCINF_FILE): $(CDCINF_TEMPLATE) $(INSERT_USB_IDS) $(USB_IDS_FILE) | $(HEADER_BUILD)
 	$(ECHO) "GEN $@"
 	$(Q)$(PYTHON) $(INSERT_USB_IDS) $(USB_IDS_FILE) $< > $@
+
+# Depending on build configuration, isr functions are either run from flash or ram.
+# The appropriate linker snippet will be included as "common_isr_gen.ld" in the final
+# linker script. Copy the correct src file to this name now.
+ifeq ($(MICROPY_USE_RAM_ISR_UART_FLASH_FN),1)
+$(BUILD)/common_isr_gen.ld: boards/common_isr_ram.ld $(BOARD_DIR)/mpconfigboard.mk | $(GEN_PINS_HDR)
+	$(Q)cp -f boards/common_isr_ram.ld $(BUILD)/common_isr_gen.ld
+$(BUILD)/common_isr_extratext_gen.ld: $(BUILD)/common_isr_gen.ld
+	$(Q)echo "" > $(BUILD)/common_isr_extratext_gen.ld
+
+else
+$(BUILD)/common_isr_gen.ld: boards/common_isr.ld boards/common_isr_extratext.ld $(BOARD_DIR)/mpconfigboard.mk | $(GEN_PINS_HDR)
+	$(Q)cp -f boards/common_isr.ld $(BUILD)/common_isr_gen.ld
+$(BUILD)/common_isr_extratext_gen.ld: $(BUILD)/common_isr_gen.ld
+	$(Q)cp -f boards/common_isr_extratext.ld $(BUILD)/common_isr_extratext_gen.ld
+endif
+
+$(OBJ): | $(BUILD)/common_isr_gen.ld $(BUILD)/common_isr_extratext_gen.ld
 
 include $(TOP)/py/mkrules.mk
