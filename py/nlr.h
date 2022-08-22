@@ -63,7 +63,7 @@
     #else
         #define MICROPY_NLR_NUM_REGS (MICROPY_NLR_NUM_REGS_X64)
     #endif
-#elif defined(__thumb2__) || defined(__thumb__) || defined(__arm__)
+#elif (defined(__thumb2__) || defined(__thumb__) || defined(__arm__)) && !defined(__QNX__)
     #define MICROPY_NLR_THUMB (1)
     #if defined(__SOFTFP__)
         #define MICROPY_NLR_NUM_REGS (MICROPY_NLR_NUM_REGS_ARM_THUMB)

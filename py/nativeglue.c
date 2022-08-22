@@ -307,7 +307,7 @@ const mp_fun_table_t mp_fun_table = {
     mp_small_int_modulo,
     mp_native_yield_from,
     #if MICROPY_NLR_SETJMP
-    setjmp,
+    _setjmp,
     #else
     NULL,
     #endif

@@ -33,9 +33,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 typedef unsigned char byte;
-typedef unsigned int uint;
+//typedef unsigned int uint;
 
 /** generic ops *************************************************/
 

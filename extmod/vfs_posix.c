@@ -200,6 +200,7 @@ STATIC mp_obj_t vfs_posix_ilistdir_it_iternext(mp_obj_t self_in) {
         }
 
         #ifdef _DIRENT_HAVE_D_TYPE
+
         #ifdef DTTOIF
         t->items[1] = MP_OBJ_NEW_SMALL_INT(DTTOIF(dirent->d_type));
         #else
