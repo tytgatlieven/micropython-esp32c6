@@ -60,7 +60,10 @@ STATIC uint emit_opt = MP_EMIT_OPT_NONE;
 #if MICROPY_ENABLE_GC
 // Heap size of GC heap (if enabled)
 // Make it larger on a 64 bit machine, because pointers are larger.
-long heap_size = 1024 * 1024 * (sizeof(mp_uint_t) / 4);
+#ifndef MICROPY_UNIX_DEFAULT_HEAP
+#define MICROPY_UNIX_DEFAULT_HEAP (1024 * 1024 * (sizeof(mp_uint_t) / 4))
+#endif
+long heap_size = MICROPY_UNIX_DEFAULT_HEAP;
 #endif
 
 STATIC void stderr_print_strn(void *env, const char *str, size_t len) {
