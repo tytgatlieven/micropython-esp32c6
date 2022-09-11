@@ -146,12 +146,15 @@ def create_task(coro):
     return t
 
 
+timing = {}
+
 # Keep scheduling tasks until there are none left to schedule
 def run_until_complete(main_task=None):
     global cur_task
     excs_all = (CancelledError, Exception)  # To prevent heap allocation in loop
     excs_stop = (CancelledError, StopIteration)  # To prevent heap allocation in loop
     while True:
+        t_start = ticks()
         # Wait until the head of _task_queue is ready to run
         dt = 1
         while dt > 0:
@@ -165,6 +168,10 @@ def run_until_complete(main_task=None):
                 return
             # print('(poll {})'.format(dt), len(_io_queue.map))
             _io_queue.wait_io_event(dt)
+            if "wait_io_event" not in timing:
+                timing["wait_io_event"] = 0
+            timing["wait_io_event"] += ticks_diff(ticks(), t_start)
+            t_start = ticks()
 
         # Get next task to run and continue it
         t = _task_queue.pop()
@@ -181,6 +188,12 @@ def run_until_complete(main_task=None):
                 # call_exception_handler function.
                 t.data = None
                 t.coro.throw(exc)
+
+            t_name = str(t.coro)
+
+            if t_name not in timing:
+                timing[t_name] = 0
+            timing[t_name] += ticks_diff(ticks(), t_start)
         except excs_all as er:
             # Check the task is not on any event queue
             assert t.data is None
