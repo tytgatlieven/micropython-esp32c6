@@ -22,8 +22,8 @@ if os.path.abspath(sys.path[0]) == test_dir:
     # accidentally importing tests like micropython/const.py
     sys.path.pop(0)
 
-sys.path.insert(0, f"{test_dir}/../tools")
-import pyboard
+sys.path.insert(0, f"{test_dir}/../tools/mpremote")
+import mpremote.pyboardextended as pyboard
 
 if os.name == "nt":
     CPYTHON3 = os.getenv("MICROPY_CPYTHON3", "python3.exe")
@@ -219,11 +219,12 @@ class PyInstancePyboard(PyInstance):
         else:
             return device
 
-    def __init__(self, device):
+    def __init__(self, device, mount):
         device = self.map_device_shortcut(device)
         self.device = device
-        self.pyb = pyboard.Pyboard(device)
+        self.pyb = pyboard.PyboardExtended(device)
         self.pyb.enter_raw_repl()
+        self.mount = mount
         self.finished = True
 
     def __str__(self):
@@ -244,7 +245,17 @@ class PyInstancePyboard(PyInstance):
         return str(output.strip(), "ascii"), err
 
     def start_script(self, script):
-        self.pyb.enter_raw_repl()
+        if self.mount:
+            # self.pyb.exit_raw_repl()
+            m = os.path.abspath(self.mount)
+            self.pyb.mount_local(m)
+            # print(self.pyb.exec_('import sys;sys.path.insert(0, "/remote")'))
+            # print(self.pyb.exec_('uos.mount(RemoteFS(RemoteCommand()), "/remote")'))
+            # print(self.pyb.exec_('"RemoteFS" in globals()'))
+            self.pyb.enter_raw_repl(soft_reset=False)
+        else:
+            self.pyb.enter_raw_repl(soft_reset=True)
+
         self.pyb.exec_raw_no_follow(script)
         self.finished = False
 
@@ -499,6 +510,9 @@ def main():
         "-i", "--instance", action="append", default=[], help="instance(s) to run the tests on"
     )
     cmd_parser.add_argument(
+        "-m", "--mount", default=None, help="(pyb only) path to mount remotely"
+    )
+    cmd_parser.add_argument(
         "-p",
         "--permutations",
         type=int,
@@ -537,7 +551,7 @@ def main():
         elif cmd == "cpython":
             instances_test.append(PyInstanceSubProcess([CPYTHON3], env))
         elif cmd.startswith("pyb:"):
-            instances_test.append(PyInstancePyboard(cmd[len("pyb:") :]))
+            instances_test.append(PyInstancePyboard(cmd[len("pyb:") :], cmd_args.mount))
         else:
             print("unknown instance string: {}".format(cmd), file=sys.stderr)
             sys.exit(1)
