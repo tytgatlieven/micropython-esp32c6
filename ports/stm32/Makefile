@@ -340,7 +340,7 @@ SRC_CXX += \
 SRC_O += \
 	$(STARTUP_FILE) \
 	$(SYSTEM_FILE)
-    
+
 ifeq ($(MCU_SERIES),$(filter $(MCU_SERIES),f0 g0 l0))
 CSUPEROPT = -Os # save some code space
 SRC_O += \
@@ -502,6 +502,14 @@ GIT_SUBMODULES += lib/mynewt-nimble
 CFLAGS_MOD += -DMICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS=1
 include $(TOP)/extmod/nimble/nimble.mk
 SRC_C += mpnimbleport.c
+endif
+
+
+ifeq ($(MICROPY_BLUETOOTH_ZEPHYR),1)
+# Zephyr BLE is enabled.
+GIT_SUBMODULES += lib/zephyr
+CFLAGS_MOD += -DCONFIG_ARCH_ARM=1 -DMICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS=1
+include $(TOP)/extmod/zephyr_ble/zephyr_ble.mk
 endif
 
 ifeq ($(MICROPY_BLUETOOTH_BTSTACK),1)
