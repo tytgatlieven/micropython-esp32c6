@@ -189,14 +189,20 @@ include $(TOP)/extmod/btstack/btstack.mk
 SRC_BTSTACK += lib/btstack/platform/embedded/btstack_run_loop_embedded.c
 
 else
+ifeq ($(MICROPY_BLUETOOTH_ZEPHYR),1)
+# Zephyr BLE is enabled.
+GIT_SUBMODULES += lib/zephyr
+CFLAGS_MOD += -DCONFIG_ARCH_POSIX=1 -DMICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS=1
+include $(TOP)/extmod/zephyr_ble/zephyr_ble.mk
 
+else
 # NimBLE is enabled.
 GIT_SUBMODULES += lib/mynewt-nimble
 CFLAGS_MOD += -DMICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS=1
 include $(TOP)/extmod/nimble/nimble.mk
 
 endif
-
+endif
 endif
 
 ifeq ($(MICROPY_PY_FFI),1)
