@@ -10,15 +10,24 @@ import itertools
 import subprocess
 import tempfile
 
-sys.path.append("../tools")
+test_dir = os.path.abspath(os.path.dirname(__file__))
+
+if os.path.abspath(sys.path[0]) == test_dir:
+    # remove the micropython/tests dir from path to avoid
+    # accidentally importing tests like micropython/const.py
+    sys.path.pop(0)
+
+sys.path.insert(0, f"{test_dir}/../tools")
 import pyboard
 
 if os.name == "nt":
     CPYTHON3 = os.getenv("MICROPY_CPYTHON3", "python3.exe")
-    MICROPYTHON = os.getenv("MICROPY_MICROPYTHON", "../ports/windows/micropython.exe")
+    MICROPYTHON = os.getenv("MICROPY_MICROPYTHON", f"{test_dir}/../ports/windows/micropython.exe")
 else:
     CPYTHON3 = os.getenv("MICROPY_CPYTHON3", "python3")
-    MICROPYTHON = os.getenv("MICROPY_MICROPYTHON", "../ports/unix/build-standard/micropython")
+    MICROPYTHON = os.getenv(
+        "MICROPY_MICROPYTHON", f"{test_dir}/../ports/unix/build-standard/micropython"
+    )
 
 # For diff'ing test output
 DIFF = os.getenv("MICROPY_DIFF", "diff -u")
@@ -471,7 +480,10 @@ def run_tests(test_files, instances_truth, instances_test):
 def main():
     global cmd_args
 
-    cmd_parser = argparse.ArgumentParser(description="Run network tests for MicroPython")
+    cmd_parser = argparse.ArgumentParser(
+        description="Run network tests for MicroPython",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
     cmd_parser.add_argument(
         "-s", "--show-output", action="store_true", help="show test output after running"
     )
@@ -492,7 +504,7 @@ def main():
     cmd_args = cmd_parser.parse_args()
 
     # clear search path to make sure tests use only builtin modules and those in extmod
-    os.environ["MICROPYPATH"] = os.pathsep + "../extmod"
+    os.environ["MICROPYPATH"] = os.pathsep.join(("", ".frozen", "../extmod"))
 
     test_files = prepare_test_file_list(cmd_args.files)
     max_instances = max(t[1] for t in test_files)
