@@ -59,3 +59,6 @@
 [submodule "lib/zephyr"]
 	path = lib/zephyr
 	url = ../../zephyrproject-rtos/zephyr.git
+[submodule "lib/tinycrypt"]
+	path = lib/tinycrypt
+	url = https://github.com/zephyrproject-rtos/tinycrypt
