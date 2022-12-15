@@ -9,9 +9,12 @@ import argparse
 import itertools
 import subprocess
 import tempfile
+from pathlib import Path
 
-sys.path.append("../tools")
-import pyboard
+test_dir = os.path.dirname(__file__)
+
+sys.path.append(f"test_dir/../tools/mpremote")
+import mpremote.pyboardextended as pyboard
 
 if os.name == "nt":
     CPYTHON3 = os.getenv("MICROPY_CPYTHON3", "python3.exe")
@@ -205,10 +208,12 @@ class PyInstancePyboard(PyInstance):
         else:
             return device
 
-    def __init__(self, device):
+    def __init__(self, device,  mounts):
         device = self.map_device_shortcut(device)
         self.device = device
-        self.pyb = pyboard.Pyboard(device)
+        self.pyb = pyboard.PyboardExtended(device)
+        for m in mounts:
+            self.pyb.mount_local(m, unsafe_links=False)
         self.pyb.enter_raw_repl()
         self.finished = True
 
@@ -482,6 +487,9 @@ def main():
         "-i", "--instance", action="append", default=[], help="instance(s) to run the tests on"
     )
     cmd_parser.add_argument(
+        "-m", "--mount", action="append", default=[], help="(pyb only) path to mount remotely"
+    )
+    cmd_parser.add_argument(
         "-p",
         "--permutations",
         type=int,
@@ -512,7 +520,7 @@ def main():
         elif cmd == "cpython":
             instances_test.append(PyInstanceSubProcess([CPYTHON3], env))
         elif cmd.startswith("pyb:"):
-            instances_test.append(PyInstancePyboard(cmd[len("pyb:") :]))
+            instances_test.append(PyInstancePyboard(cmd[len("pyb:") :], cmd_args.mount))
         else:
             print("unknown instance string: {}".format(cmd), file=sys.stderr)
             sys.exit(1)
