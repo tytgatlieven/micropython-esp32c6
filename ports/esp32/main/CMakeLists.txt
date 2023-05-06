@@ -102,7 +102,7 @@ set(IDF_COMPONENTS
     bootloader_support
     bt
     driver
-    esp_adc_cal
+    esp_adc
     esp_common
     esp_eth
     esp_event
@@ -114,13 +114,11 @@ set(IDF_COMPONENTS
     log
     lwip
     mbedtls
-    mdns
     newlib
     nvs_flash
     sdmmc
     soc
     spi_flash
-    tcpip_adapter
     ulp
     vfs
     xtensa
@@ -142,15 +140,19 @@ if(IDF_VERSION_MINOR GREATER_EQUAL 3 OR IDF_VERSION_MAJOR GREATER_EQUAL 5)
 endif()
 
 if(IDF_TARGET STREQUAL "esp32")
-    list(APPEND IDF_COMPONENTS esp32)
+    # list(APPEND IDF_COMPONENTS esp32)
 elseif(IDF_TARGET STREQUAL "esp32c3")
-    list(APPEND IDF_COMPONENTS esp32c3)
+    # list(APPEND IDF_COMPONENTS esp32c3)
     list(APPEND IDF_COMPONENTS riscv)
+elseif(IDF_TARGET STREQUAL "esp32c6")
+    # list(APPEND IDF_COMPONENTS esp32c6)
+    list(APPEND IDF_COMPONENTS riscv)
+    # list(APPEND IDF_COMPONENTS tinyusb)
 elseif(IDF_TARGET STREQUAL "esp32s2")
-    list(APPEND IDF_COMPONENTS esp32s2)
+    # list(APPEND IDF_COMPONENTS esp32s2)
     list(APPEND IDF_COMPONENTS tinyusb)
 elseif(IDF_TARGET STREQUAL "esp32s3")
-    list(APPEND IDF_COMPONENTS esp32s3)
+    # list(APPEND IDF_COMPONENTS esp32s3)
     list(APPEND IDF_COMPONENTS tinyusb)
 endif()
 
@@ -216,12 +218,21 @@ if(IDF_VERSION_MINOR GREATER_EQUAL 2 OR IDF_VERSION_MAJOR GREATER_EQUAL 5)
     # These paths cannot currently be found by the IDF_COMPONENTS search loop above,
     # so add them explicitly.
     list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/soc/soc/${IDF_TARGET}/include)
+    list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/riscv/include)
     list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/soc/soc/include)
     if(IDF_VERSION_MINOR GREATER_EQUAL 3)
         list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/tinyusb/additions/include)
         list(APPEND MICROPY_CPP_INC_EXTRA ${IDF_PATH}/components/tinyusb/tinyusb/src)
     endif()
 endif()
+
+component_compile_options("-Wno-error=maybe-uninitialized")
+component_compile_options("-Wno-maybe-uninitialized")
+
+set(COMPONENT_PRIV_REQUIRES ${COMPONENT_PRIV_REQUIRES} mdns)
+
+set_source_files_properties("host/nimble/nimble/nimble/host/src/ble_gattc.c"
+        PROPERTIES COMPILE_FLAGS -Wno-maybe-uninitialized)
 
 # Include the main MicroPython cmake rules.
 include(${MICROPY_DIR}/py/mkrules.cmake)

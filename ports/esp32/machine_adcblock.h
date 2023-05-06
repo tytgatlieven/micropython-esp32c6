@@ -1,7 +1,7 @@
 #ifndef MICROPY_INCLUDED_MACHINE_ADCBLOCK_H
 #define MICROPY_INCLUDED_MACHINE_ADCBLOCK_H
 
-#include "esp_adc_cal.h"
+#include "esp_adc/adc_cali.h"
 
 typedef struct _madcblock_obj_t {
     mp_obj_base_t base;

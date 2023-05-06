@@ -836,7 +836,7 @@ STATIC mp_obj_t esp_socket_initialize() {
     static int initialized = 0;
     if (!initialized) {
         ESP_LOGI("modsocket", "Initializing");
-        tcpip_adapter_init();
+        esp_netif_init();
         initialized = 1;
     }
     return mp_const_none;
