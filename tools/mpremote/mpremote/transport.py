@@ -169,3 +169,19 @@ class Transport:
             self.exec("f=open('%s','a')\nf.close()" % path)
         except TransportError as e:
             raise _convert_filesystem_error(e, path) from None
+
+    def fs_hashfile(self, path, chunk_size=256, algo="sha256"):
+        try:
+            self.exec("import hashlib\nh = hashlib.{algo}()".format(algo=algo))
+        except TransportError:
+            print("hashlib.{algo} not available on target".format(algo=algo), file=sys.stderr)
+            return None
+        try:
+            self.exec(
+                "buf = memoryview(bytearray({chunk_size}))\nwith open('{path}', 'rb') as f:\n while True:\n  n = f.readinto(buf)\n  if n == 0:\n   break\n  h.update(buf if n == {chunk_size} else buf[:n])\n".format(
+                    chunk_size=chunk_size, path=path
+                )
+            )
+            return self.eval("h.digest()")
+        except TransportExecError as e:
+            raise _convert_filesystem_error(e, path) from None
