@@ -24,7 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import ast, os, sys
+import ast, hashlib, os, sys
 from collections import namedtuple
 
 
@@ -174,8 +174,9 @@ class Transport:
         try:
             self.exec("import hashlib\nh = hashlib.{algo}()".format(algo=algo))
         except TransportError:
-            print("hashlib.{algo} not available on target".format(algo=algo), file=sys.stderr)
-            return None
+            # hashlib (or hashlib.{algo}) not available on device. Do the hash locally.
+            data = self.fs_readfile(path, chunk_size=chunk_size)
+            return getattr(hashlib, algo)(data).digest()
         try:
             self.exec(
                 "buf = memoryview(bytearray({chunk_size}))\nwith open('{path}', 'rb') as f:\n while True:\n  n = f.readinto(buf)\n  if n == 0:\n   break\n  h.update(buf if n == {chunk_size} else buf[:n])\n".format(

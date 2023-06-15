@@ -18,7 +18,7 @@ MicroPython device over a serial connection.  Commands supported are:
 """
 
 import argparse
-import os, sys, time
+import hashlib, os, sys, time
 from collections.abc import Mapping
 from textwrap import dedent
 
@@ -181,7 +181,17 @@ def argparse_rtc():
 
 def argparse_filesystem():
     cmd_parser = argparse.ArgumentParser(description="execute filesystem commands on the device")
-    _bool_flag(cmd_parser, "recursive", "r", False, "recursive copy (for cp command only)")
+    _bool_flag(cmd_parser, "recursive", "r", False, "recursive copy (for 'cp' command only)")
+    cmd_parser.add_argument(
+        "--algorithm",
+        "-a",
+        type=str,
+        default="sha256",
+        metavar="ALGO",
+        choices=list(hashlib.algorithms_guaranteed),
+        help="hash algorithm to use (for 'hash' command only): "
+        + ", ".join(sorted(hashlib.algorithms_guaranteed)),
+    )
     _bool_flag(
         cmd_parser,
         "verbose",

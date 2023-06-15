@@ -347,7 +347,7 @@ def do_filesystem(state, args):
         elif command == "touch":
             state.transport.fs_touchfile(path)
         elif command == "hash":
-            digest = state.transport.fs_hashfile(path)
+            digest = state.transport.fs_hashfile(path, algo=args.algorithm)
             print(digest.hex())
         elif command == "cp":
             if args.recursive:
