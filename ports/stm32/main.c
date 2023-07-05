@@ -186,7 +186,15 @@ MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
     if (len != -1) {
         // Detected a littlefs filesystem so create correct block device for it
         mp_obj_t args[] = { MP_OBJ_NEW_QSTR(MP_QSTR_len), MP_OBJ_NEW_SMALL_INT(len) };
-        bdev = MP_OBJ_TYPE_GET_SLOT(&pyb_flash_type, make_new)(&pyb_flash_type, 0, 1, args);
+        nlr_buf_t nlr;
+        if (nlr_push(&nlr) == 0) {
+            bdev = MP_OBJ_TYPE_GET_SLOT(&pyb_flash_type, make_new)(&pyb_flash_type, 0, 1, args);
+            nlr_pop();
+        } else {
+            // Uncaught exception; len must be an invalid length.
+            mp_printf(&mp_plat_print, "MPY: corrupted filesystem\n");
+            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(nlr.ret_val));
+        }
     }
 
     #endif
