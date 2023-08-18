@@ -1,0 +1,15 @@
+{
+    "deploy": [
+        "../deploy.md"
+    ],
+    "docs": "",
+    "features": [],
+    "images": [
+        "nucleo_h503rb.jpg"
+    ],
+    "mcu": "stm32h5",
+    "product": "Nucleo H503RB",
+    "thumbnail": "",
+    "url": "https://www.st.com/en/evaluation-tools/nucleo-h503rb.html",
+    "vendor": "ST Microelectronics"
+}
