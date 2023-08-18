@@ -58,7 +58,6 @@
 #define MICROPY_DEBUG_PRINTERS      (1)
 #define MICROPY_READER_POSIX        (1)
 #define MICROPY_READER_VFS          (1)
-#define MICROPY_HELPER_REPL         (1)
 #define MICROPY_REPL_EMACS_KEYS     (1)
 #define MICROPY_REPL_AUTO_INDENT    (1)
 #define MICROPY_HELPER_LEXER_UNIX   (1)

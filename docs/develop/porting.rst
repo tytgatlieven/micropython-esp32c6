@@ -147,7 +147,6 @@ The following is an example of an ``mpconfigport.h`` file:
 
    // Python internal features.
    #define MICROPY_ENABLE_GC                       (1)
-   #define MICROPY_HELPER_REPL                     (1)
    #define MICROPY_ERROR_REPORTING                 (MICROPY_ERROR_REPORTING_TERSE)
    #define MICROPY_FLOAT_IMPL                      (MICROPY_FLOAT_IMPL_FLOAT)
 

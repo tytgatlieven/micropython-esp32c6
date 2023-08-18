@@ -672,7 +672,7 @@
 
 // Whether to include REPL helper function
 #ifndef MICROPY_HELPER_REPL
-#define MICROPY_HELPER_REPL (MICROPY_CONFIG_ROM_LEVEL_AT_LEAST_EXTRA_FEATURES)
+#define MICROPY_HELPER_REPL (MICROPY_ENABLE_COMPILER)
 #endif
 
 // Allow enabling debug prints after each REPL line
