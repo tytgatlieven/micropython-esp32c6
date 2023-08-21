@@ -157,7 +157,7 @@ else
 ifneq ($(LTO), 1)
 CFLAGS += -g  # always include debug info in the ELF, unless LTO is on
 endif
-COPT ?= -Os -DNDEBUG
+COPT ?= -Os -DNDEBUG -g
 endif
 
 # Flags for optional C++ source code
@@ -363,7 +363,7 @@ SRC_C += \
 SRC_O += \
 	$(STARTUP_FILE) \
 	$(SYSTEM_FILE)
-    
+
 ifeq ($(MCU_SERIES),$(filter $(MCU_SERIES),f0 g0 l0))
 CSUPEROPT = -Os # save some code space
 SRC_O += \

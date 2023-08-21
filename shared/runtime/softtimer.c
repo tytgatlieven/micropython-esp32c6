@@ -30,6 +30,8 @@
 #include "py/runtime.h"
 #include "softtimer.h"
 
+#if MICROPY_ENABLE_SCHEDULER
+
 extern __IO uint32_t MICROPY_SOFT_TIMER_TICKS_MS;
 
 volatile uint32_t soft_timer_next;
@@ -149,3 +151,5 @@ void soft_timer_remove(soft_timer_entry_t *entry) {
     soft_timer_heap = (soft_timer_entry_t *)mp_pairheap_delete(soft_timer_lt, &soft_timer_heap->pairheap, &entry->pairheap);
     restore_irq_pri(irq_state);
 }
+
+#endif // MICROPY_ENABLE_SCHEDULER

@@ -59,6 +59,7 @@ void pendsv_init(void) {
 // PENDSV feature.  This will wait until all interrupts are finished then raise
 // the given exception object using nlr_jump in the context of the top-level
 // thread.
+#if MICROPY_KBD_EXCEPTION
 void pendsv_kbd_intr(void) {
     if (MP_STATE_MAIN_THREAD(mp_pending_exception) == MP_OBJ_NULL) {
         mp_sched_keyboard_interrupt();
@@ -68,6 +69,7 @@ void pendsv_kbd_intr(void) {
         SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
     }
 }
+#endif
 
 #if defined(PENDSV_DISPATCH_NUM_SLOTS)
 void pendsv_schedule_dispatch(size_t slot, pendsv_dispatch_t f) {

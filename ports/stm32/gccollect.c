@@ -43,7 +43,7 @@ void gc_collect(void) {
     #endif
 
     // trace soft timer nodes
-    soft_timer_gc_mark_all();
+    // soft_timer_gc_mark_all();
 
     // end the GC
     gc_collect_end();

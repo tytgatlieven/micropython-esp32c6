@@ -556,6 +556,7 @@ STATIC mp_obj_t extint_obj_disable(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(extint_obj_disable_obj, extint_obj_disable);
 
+#if MICROPY_ENABLE_SCHEDULER
 /// \method swint()
 /// Trigger the callback from software.
 STATIC mp_obj_t extint_obj_swint(mp_obj_t self_in) {
@@ -564,6 +565,7 @@ STATIC mp_obj_t extint_obj_swint(mp_obj_t self_in) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(extint_obj_swint_obj,  extint_obj_swint);
+#endif
 
 // TODO document as a staticmethod
 /// \classmethod regs()
@@ -669,7 +671,9 @@ STATIC const mp_rom_map_elem_t extint_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_line),    MP_ROM_PTR(&extint_obj_line_obj) },
     { MP_ROM_QSTR(MP_QSTR_enable),  MP_ROM_PTR(&extint_obj_enable_obj) },
     { MP_ROM_QSTR(MP_QSTR_disable), MP_ROM_PTR(&extint_obj_disable_obj) },
+    #if MICROPY_ENABLE_SCHEDULER
     { MP_ROM_QSTR(MP_QSTR_swint),   MP_ROM_PTR(&extint_obj_swint_obj) },
+    #endif
     { MP_ROM_QSTR(MP_QSTR_regs),    MP_ROM_PTR(&extint_regs_obj) },
 
     // class constants
@@ -721,11 +725,13 @@ void Handle_EXTI_Irq(uint32_t line) {
             }
             #endif
             if (*cb != mp_const_none) {
+                #if MICROPY_ENABLE_SCHEDULER
                 // If it's a soft IRQ handler then just schedule callback for later
                 if (!pyb_extint_hard_irq[line]) {
                     mp_sched_schedule(*cb, pyb_extint_callback_arg[line]);
                     return;
                 }
+                #endif
 
                 mp_sched_lock();
                 // When executing code within a handler we must lock the GC to prevent

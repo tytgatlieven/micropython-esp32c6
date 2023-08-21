@@ -38,7 +38,7 @@
 
 #define I2C_POLL_DEFAULT_TIMEOUT_US (50000) // 50ms
 
-#if defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32H7) || defined(STM32L1) || defined(STM32L4)
+#if defined(STM32F0) || defined(STM32F4) || defined(STM32F7) || defined(STM32H5) || defined(STM32H7) || defined(STM32L1) || defined(STM32L4)
 
 typedef struct _machine_hard_i2c_obj_t {
     mp_obj_base_t base;
@@ -132,7 +132,7 @@ int machine_hard_i2c_transfer(mp_obj_base_t *self_in, uint16_t addr, size_t n, m
     return num_acks;
 }
 
-#else
+#else  // MICROPY_HW_ENABLE_HW_I2C
 
 // No hardware I2C driver for this MCU so use the software implementation
 
@@ -193,7 +193,7 @@ STATIC void machine_hard_i2c_init(machine_hard_i2c_obj_t *self, uint32_t freq, u
 #endif
 
 mp_obj_t machine_hard_i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    MP_MACHINE_I2C_CHECK_FOR_LEGACY_SOFTI2C_CONSTRUCTION(n_args, n_kw, all_args);
+    // MP_MACHINE_I2C_CHECK_FOR_LEGACY_SOFTI2C_CONSTRUCTION(n_args, n_kw, all_args);
 
     // parse args
     enum { ARG_id, ARG_scl, ARG_sda, ARG_freq, ARG_timeout, ARG_timingr };

@@ -47,6 +47,9 @@
 
 #if MICROPY_HW_ENABLE_USB
 
+#define MICROPY_USB_VCP_RX_IRQ_SUPPORTED MICROPY_ENABLE_SCHEDULER
+
+
 // Work out which USB device to use as the main one (the one with the REPL)
 #if !defined(MICROPY_HW_USB_MAIN_DEV)
 #if defined(MICROPY_HW_USB_FS)
@@ -638,19 +641,23 @@ const pyb_usb_vcp_obj_t pyb_usb_vcp_obj[MICROPY_HW_USB_CDC_NUM] = {
     #endif
 };
 
+#if MICROPY_USB_VCP_RX_IRQ_SUPPORTED
 STATIC bool pyb_usb_vcp_irq_scheduled[MICROPY_HW_USB_CDC_NUM];
+#endif
 
 STATIC void pyb_usb_vcp_init0(void) {
+    #if MICROPY_USB_VCP_RX_IRQ_SUPPORTED
     for (size_t i = 0; i < MICROPY_HW_USB_CDC_NUM; ++i) {
         MP_STATE_PORT(pyb_usb_vcp_irq)[i] = mp_const_none;
         pyb_usb_vcp_irq_scheduled[i] = false;
     }
+    #endif
 
     // Activate USB_VCP(0) on dupterm slot 1 for the REPL
     MP_STATE_VM(dupterm_objs[1]) = MP_OBJ_FROM_PTR(&pyb_usb_vcp_obj[0]);
     usb_vcp_attach_to_repl(&pyb_usb_vcp_obj[0], true);
 }
-
+#if MICROPY_USB_VCP_RX_IRQ_SUPPORTED
 STATIC mp_obj_t pyb_usb_vcp_irq_run(mp_obj_t self_in) {
     pyb_usb_vcp_obj_t *self = MP_OBJ_TO_PTR(self_in);
     uint8_t idx = self->cdc_itf->cdc_idx;
@@ -671,6 +678,7 @@ void usbd_cdc_rx_event_callback(usbd_cdc_itf_t *cdc) {
         pyb_usb_vcp_irq_scheduled[idx] = mp_sched_schedule(MP_OBJ_FROM_PTR(&pyb_usb_vcp_irq_run_obj), self);
     }
 }
+#endif
 
 STATIC void pyb_usb_vcp_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     int id = ((pyb_usb_vcp_obj_t *)MP_OBJ_TO_PTR(self_in))->cdc_itf->cdc_idx;
@@ -724,11 +732,13 @@ STATIC mp_obj_t pyb_usb_vcp_init(size_t n_args, const mp_obj_t *pos_args, mp_map
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_usb_vcp_init_obj, 1, pyb_usb_vcp_init);
 
+#if MICROPY_KBD_EXCEPTION
 STATIC mp_obj_t pyb_usb_vcp_setinterrupt(mp_obj_t self_in, mp_obj_t int_chr_in) {
     mp_hal_set_interrupt_char(mp_obj_get_int(int_chr_in));
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(pyb_usb_vcp_setinterrupt_obj, pyb_usb_vcp_setinterrupt);
+#endif
 
 STATIC mp_obj_t pyb_usb_vcp_isconnected(mp_obj_t self_in) {
     pyb_usb_vcp_obj_t *self = MP_OBJ_TO_PTR(self_in);
@@ -818,6 +828,7 @@ STATIC mp_obj_t pyb_usb_vcp_recv(size_t n_args, const mp_obj_t *args, mp_map_t *
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_usb_vcp_recv_obj, 1, pyb_usb_vcp_recv);
 
+#if MICROPY_USB_VCP_RX_IRQ_SUPPORTED
 // irq(handler=None, trigger=IRQ_RX, hard=False)
 STATIC mp_obj_t pyb_usb_vcp_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_handler, ARG_trigger, ARG_hard };
@@ -857,10 +868,13 @@ STATIC mp_obj_t pyb_usb_vcp_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_usb_vcp_irq_obj, 1, pyb_usb_vcp_irq);
+#endif
 
 STATIC const mp_rom_map_elem_t pyb_usb_vcp_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&pyb_usb_vcp_init_obj) },
+    #if MICROPY_KBD_EXCEPTION
     { MP_ROM_QSTR(MP_QSTR_setinterrupt), MP_ROM_PTR(&pyb_usb_vcp_setinterrupt_obj) },
+    #endif
     { MP_ROM_QSTR(MP_QSTR_isconnected), MP_ROM_PTR(&pyb_usb_vcp_isconnected_obj) },
     { MP_ROM_QSTR(MP_QSTR_any), MP_ROM_PTR(&pyb_usb_vcp_any_obj) },
     { MP_ROM_QSTR(MP_QSTR_send), MP_ROM_PTR(&pyb_usb_vcp_send_obj) },
@@ -871,7 +885,9 @@ STATIC const mp_rom_map_elem_t pyb_usb_vcp_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_readlines), MP_ROM_PTR(&mp_stream_unbuffered_readlines_obj)},
     { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj) },
     { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_identity_obj) },
+    #if MICROPY_USB_VCP_RX_IRQ_SUPPORTED
     { MP_ROM_QSTR(MP_QSTR_irq), MP_ROM_PTR(&pyb_usb_vcp_irq_obj) },
+    #endif
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&mp_identity_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&mp_identity_obj) },
     { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&mp_stream___exit___obj) },
@@ -1152,6 +1168,7 @@ void USR_KEYBRD_ProcessData(uint8_t pbuf) {
 #if MICROPY_HW_USB_HID
 MP_REGISTER_ROOT_POINTER(mp_obj_t pyb_hid_report_desc);
 #endif
+#if MICROPY_USB_VCP_RX_IRQ_SUPPORTED
 MP_REGISTER_ROOT_POINTER(mp_obj_t pyb_usb_vcp_irq[MICROPY_HW_USB_CDC_NUM]);
-
+#endif
 #endif // MICROPY_HW_ENABLE_USB

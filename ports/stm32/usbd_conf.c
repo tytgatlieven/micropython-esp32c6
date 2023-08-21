@@ -135,7 +135,7 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *hpcd) {
 
         // Enable VDDUSB
         #if defined(STM32H5)
-        HAL_PWREx_EnableVddUSB();
+        // HAL_PWREx_EnableVddUSB();
         #elif defined(STM32L4)
         if (__HAL_RCC_PWR_IS_CLK_DISABLED()) {
             __HAL_RCC_PWR_CLK_ENABLE();

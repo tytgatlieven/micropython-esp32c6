@@ -653,7 +653,7 @@ soft_reset_exit:
     #if MICROPY_PY_NETWORK
     mod_network_deinit();
     #endif
-    soft_timer_deinit();
+    // soft_timer_deinit();
     timer_deinit();
     uart_deinit_all();
     #if MICROPY_HW_ENABLE_CAN

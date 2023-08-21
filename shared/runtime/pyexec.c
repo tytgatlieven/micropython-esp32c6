@@ -99,8 +99,8 @@ STATIC int parse_compile_execute(const void *source, mp_parse_input_kind_t input
                 lex = mp_lexer_new_from_str_len(MP_QSTR__lt_stdin_gt_, vstr->buf, vstr->len, 0);
             } else if (exec_flags & EXEC_FLAG_SOURCE_IS_READER) {
                 lex = mp_lexer_new(MP_QSTR__lt_stdin_gt_, *(mp_reader_t *)source);
-            } else if (exec_flags & EXEC_FLAG_SOURCE_IS_FILENAME) {
-                lex = mp_lexer_new_from_file(source);
+            // } else if (exec_flags & EXEC_FLAG_SOURCE_IS_FILENAME) {
+            //     lex = mp_lexer_new_from_file(source);
             } else {
                 lex = (mp_lexer_t *)source;
             }
@@ -114,14 +114,18 @@ STATIC int parse_compile_execute(const void *source, mp_parse_input_kind_t input
         }
 
         // execute code
+        #if MICROPY_KBD_EXCEPTION
         if (!(exec_flags & EXEC_FLAG_NO_INTERRUPT)) {
             mp_hal_set_interrupt_char(CHAR_CTRL_C);
         }
+        #endif
         #if MICROPY_REPL_INFO
         start = mp_hal_ticks_ms();
         #endif
         mp_call_function_0(module_fun);
+        #if MICROPY_KBD_EXCEPTION
         mp_hal_set_interrupt_char(-1); // disable interrupt
+        #endif
         mp_handle_pending(true); // handle any pending exceptions (and any callbacks)
         nlr_pop();
         ret = 1;
@@ -130,7 +134,9 @@ STATIC int parse_compile_execute(const void *source, mp_parse_input_kind_t input
         }
     } else {
         // uncaught exception
+        #if MICROPY_KBD_EXCEPTION
         mp_hal_set_interrupt_char(-1); // disable interrupt
+        #endif
         mp_handle_pending(false); // clear any pending exceptions (and run any callbacks)
 
         if (exec_flags & EXEC_FLAG_SOURCE_IS_READER) {
@@ -692,9 +698,11 @@ int pyexec_file_if_exists(const char *filename) {
         return pyexec_frozen_module(filename, true);
     }
     #endif
+    #if MICROPY_VFS
     if (mp_import_stat(filename) != MP_IMPORT_STAT_FILE) {
         return 1; // success (no file is the same as an empty file executing without fail)
     }
+    #endif
     return pyexec_file(filename);
 }
 

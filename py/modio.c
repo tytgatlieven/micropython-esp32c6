@@ -206,7 +206,9 @@ STATIC const mp_rom_map_elem_t mp_module_io_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_io) },
     // Note: mp_builtin_open_obj should be defined by port, it's not
     // part of the core.
+    #if MICROPY_VFS
     { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
+    #endif
     #if MICROPY_PY_IO_IOBASE
     { MP_ROM_QSTR(MP_QSTR_IOBase), MP_ROM_PTR(&mp_type_iobase) },
     #endif

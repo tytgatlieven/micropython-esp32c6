@@ -82,7 +82,7 @@ STATIC mp_obj_t machine_timer_init_helper(machine_timer_obj_t *self, size_t n_ar
     }
 
     if (self->py_callback != mp_const_none) {
-        soft_timer_insert(self, self->delta_ms);
+        // soft_timer_insert(self, self->delta_ms);
     }
 
     return mp_const_none;
@@ -118,14 +118,14 @@ STATIC mp_obj_t machine_timer_make_new(const mp_obj_type_t *type, size_t n_args,
 
 STATIC mp_obj_t machine_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     machine_timer_obj_t *self = MP_OBJ_TO_PTR(args[0]);
-    soft_timer_remove(self);
+    // soft_timer_remove(self);
     return machine_timer_init_helper(self, n_args - 1, args + 1, kw_args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_timer_init_obj, 1, machine_timer_init);
 
 STATIC mp_obj_t machine_timer_deinit(mp_obj_t self_in) {
-    machine_timer_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    soft_timer_remove(self);
+    // machine_timer_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    // soft_timer_remove(self);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_timer_deinit_obj, machine_timer_deinit);

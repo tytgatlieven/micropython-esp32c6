@@ -124,7 +124,6 @@ MP_DEFINE_CONST_DICT(mp_machine_spi_locals_dict, machine_spi_locals_dict_table);
 // Implementation of soft SPI
 
 #if MICROPY_PY_MACHINE_SOFTSPI
-
 STATIC uint32_t baudrate_from_delay_half(uint32_t delay_half) {
     #ifdef MICROPY_HW_SOFTSPI_MIN_DELAY
     if (delay_half == MICROPY_HW_SOFTSPI_MIN_DELAY) {

@@ -3,16 +3,15 @@ USE_MBOOT ?= 0
 # MCU settings
 MCU_SERIES = h5
 CMSIS_MCU = STM32H503xx
-MICROPY_FLOAT_IMPL = single
-AF_FILE = boards/stm32h573_af.csv
-
-ifeq ($(USE_MBOOT),1)
-# When using Mboot everything goes after the bootloader
-# TODO(mst) MBOOT will not work (no FLASH_APP defined - awfully tight for flash!)
-LD_FILES = boards/stm32h503rb.ld boards/common_bl.ld
-TEXT0_ADDR = 0x08008000
-else
-# When not using Mboot everything goes at the start of flash
+MICROPY_FLOAT_IMPL = none
+AF_FILE = boards/stm32h50_af.csv
+MICROPY_VFS_FAT = 0
 LD_FILES = boards/stm32h503rb.ld boards/common_basic.ld
-TEXT0_ADDR = 0x08000000
-endif
+
+# LTO reduces final binary size, may be slower to build depending on gcc version and hardware
+LTO ?= 1
+
+MPY_TOOL_FLAGS = mplongint-impl=none
+
+# Don't include default frozen modules because MCU is tight on flash space
+FROZEN_MANIFEST ?=

@@ -932,10 +932,12 @@ STATIC const uint32_t tim_instance_table[MICROPY_HW_MAX_TIMER] = {
     #endif
     #endif
 
+    #if defined(TIM14)
     #if defined(STM32F0) || defined(STM32G0) || defined(STM32H5)
     TIM_ENTRY(14, TIM14_IRQn),
-    #elif defined(TIM14)
+    #else
     TIM_ENTRY(14, TIM8_TRG_COM_TIM14_IRQn),
+    #endif
     #endif
 
     #if defined(TIM15)
