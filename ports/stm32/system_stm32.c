@@ -531,7 +531,7 @@ MP_WEAK void SystemClock_Config(void) {
     // Enable MSI-Hardware auto calibration mode with LSE
     HAL_RCCEx_EnableMSIPLLMode();
 
-    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SAI1 | RCC_PERIPHCLK_I2C1
         | RCC_PERIPHCLK_USB | RCC_PERIPHCLK_ADC
         | RCC_PERIPHCLK_RNG | RCC_PERIPHCLK_RTC;

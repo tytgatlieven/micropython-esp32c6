@@ -384,7 +384,7 @@ STATIC void adc_init_single(pyb_obj_adc_t *adc_obj) {
     adcx_init_periph(&adc_obj->handle, ADC_RESOLUTION_12B);
 
     #if (defined(STM32G4) || defined(STM32L4)) && defined(ADC_DUALMODE_REGSIMULT_INJECSIMULT)
-    ADC_MultiModeTypeDef multimode;
+    ADC_MultiModeTypeDef multimode = {0};
     multimode.Mode = ADC_MODE_INDEPENDENT;
     if (HAL_ADCEx_MultiModeConfigChannel(&adc_obj->handle, &multimode) != HAL_OK) {
         mp_raise_msg_varg(&mp_type_ValueError, MP_ERROR_TEXT("Can not set multimode on ADC1 channel: %d"), adc_obj->channel);
@@ -393,7 +393,7 @@ STATIC void adc_init_single(pyb_obj_adc_t *adc_obj) {
 }
 
 STATIC void adc_config_channel(ADC_HandleTypeDef *adc_handle, uint32_t channel) {
-    ADC_ChannelConfTypeDef sConfig;
+    ADC_ChannelConfTypeDef sConfig = {0};
 
     #if defined(STM32G0) || defined(STM32G4) || defined(STM32H7) || defined(STM32L4) || defined(STM32WB)
     sConfig.Rank = ADC_REGULAR_RANK_1;

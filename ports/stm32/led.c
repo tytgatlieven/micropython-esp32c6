@@ -175,7 +175,7 @@ STATIC void led_pwm_init(int led) {
     HAL_TIM_PWM_Init(&tim);
 
     // PWM configuration
-    TIM_OC_InitTypeDef oc_init;
+    TIM_OC_InitTypeDef oc_init = {0};
     oc_init.OCMode = TIM_OCMODE_PWM1;
     oc_init.Pulse = 0; // off
     oc_init.OCPolarity = MICROPY_HW_LED_INVERTED ? TIM_OCPOLARITY_LOW : TIM_OCPOLARITY_HIGH;

@@ -517,7 +517,7 @@ STATIC void feed_dma(machine_i2s_obj_t *self, ping_pong_t dma_ping_pong) {
 STATIC bool i2s_init(machine_i2s_obj_t *self) {
 
     // init the GPIO lines
-    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitTypeDef GPIO_InitStructure = {0};
     GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStructure.Speed = GPIO_SPEED_FAST;
     GPIO_InitStructure.Pull = GPIO_PULLUP;
@@ -808,7 +808,7 @@ STATIC void machine_i2s_init_helper(machine_i2s_obj_t *self, size_t n_pos_args, 
         number_of_samples = SIZEOF_DMA_BUFFER_IN_BYTES / sizeof(uint32_t);
     }
 
-    HAL_StatusTypeDef status;
+    HAL_StatusTypeDef status = {0};
     if (self->mode == I2S_MODE_MASTER_TX) {
         status = HAL_I2S_Transmit_DMA(&self->hi2s, (void *)self->dma_buffer_dcache_aligned, number_of_samples);
     } else {  // RX

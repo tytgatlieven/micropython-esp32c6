@@ -569,14 +569,14 @@ void spi_transfer(const spi_t *self, size_t len, const uint8_t *src, uint8_t *de
 
     // Note: DMA transfers are limited to 65535 bytes at a time.
 
-    HAL_StatusTypeDef status;
+    HAL_StatusTypeDef status = {0};
 
     if (dest == NULL) {
         // send only
         if (len == 1 || query_irq() == IRQ_STATE_DISABLED) {
             status = HAL_SPI_Transmit(self->spi, (uint8_t *)src, len, timeout);
         } else {
-            DMA_HandleTypeDef tx_dma;
+            DMA_HandleTypeDef tx_dma = {0};
             dma_init(&tx_dma, self->tx_dma_descr, DMA_MEMORY_TO_PERIPH, self->spi);
             self->spi->hdmatx = &tx_dma;
             self->spi->hdmarx = NULL;

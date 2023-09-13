@@ -271,7 +271,7 @@ int flash_erase(uint32_t flash_dest, uint32_t num_word32) {
 
     // Clear pending flags (if any) and set up EraseInitStruct.
 
-    FLASH_EraseInitTypeDef EraseInitStruct;
+    FLASH_EraseInitTypeDef EraseInitStruct = {0};
     #if defined(STM32F0)
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_WRPERR | FLASH_FLAG_PGERR);
     EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
@@ -371,7 +371,7 @@ void flash_erase_it(uint32_t flash_dest, uint32_t num_word32) {
                            FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
 
     // erase the sector(s)
-    FLASH_EraseInitTypeDef EraseInitStruct;
+    FLASH_EraseInitTypeDef EraseInitStruct = {0};
     EraseInitStruct.TypeErase = TYPEERASE_SECTORS;
     EraseInitStruct.VoltageRange = VOLTAGE_RANGE_3; // voltage range needs to be 2.7V to 3.6V
     EraseInitStruct.Sector = flash_get_sector_info(flash_dest, NULL, NULL);
@@ -515,7 +515,7 @@ void flash_erase_and_write(uint32_t flash_dest, const uint32_t *src, uint32_t nu
                            FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
 
     // erase the sector(s)
-    FLASH_EraseInitTypeDef EraseInitStruct;
+    FLASH_EraseInitTypeDef EraseInitStruct = {0};
     EraseInitStruct.TypeErase = TYPEERASE_SECTORS;
     EraseInitStruct.VoltageRange = VOLTAGE_RANGE_3; // voltage range needs to be 2.7V to 3.6V
     EraseInitStruct.Sector = flash_get_sector_info(flash_dest, NULL, NULL);

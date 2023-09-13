@@ -76,7 +76,7 @@ STATIC void TIM6_Config(uint freq) {
     TIM_HandleTypeDef *tim = timer_tim6_init(freq);
 
     // TIM6 TRGO selection
-    TIM_MasterConfigTypeDef config;
+    TIM_MasterConfigTypeDef config = {0};
     config.MasterOutputTrigger = TIM_TRGO_UPDATE;
     config.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
     HAL_TIMEx_MasterConfigSynchronization(tim, &config);
@@ -89,7 +89,7 @@ STATIC void TIM6_Config(uint freq) {
 STATIC uint32_t TIMx_Config(mp_obj_t timer) {
     // TRGO selection to trigger DAC
     TIM_HandleTypeDef *tim = pyb_timer_get_handle(timer);
-    TIM_MasterConfigTypeDef config;
+    TIM_MasterConfigTypeDef config = {0};
     config.MasterOutputTrigger = TIM_TRGO_UPDATE;
     config.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
     HAL_TIMEx_MasterConfigSynchronization(tim, &config);

@@ -50,7 +50,7 @@
 ///     rtc.datetime((2014, 5, 1, 4, 13, 0, 0, 0))
 ///     print(rtc.datetime())
 
-RTC_HandleTypeDef RTCHandle;
+RTC_HandleTypeDef RTCHandle = {0};
 
 // rtc_info indicates various things about RTC startup
 // it's a bit of a hack at the moment
@@ -411,7 +411,7 @@ STATIC void PYB_RTC_MspInit_Kick(RTC_HandleTypeDef *hrtc, bool rtc_use_lse, bool
     // RTC clock source uses LSE (external crystal) only if relevant
     // configuration variable is set.  Otherwise it uses LSI (internal osc).
 
-    RCC_OscInitTypeDef RCC_OscInitStruct;
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_LSE;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
     #if MICROPY_HW_RTC_USE_BYPASS
@@ -469,7 +469,7 @@ STATIC HAL_StatusTypeDef PYB_RTC_MspInit_Finalise(RTC_HandleTypeDef *hrtc) {
         }
     }
 
-    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
+    RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
     if (rtc_use_lse) {
         PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
@@ -488,7 +488,7 @@ STATIC HAL_StatusTypeDef PYB_RTC_MspInit_Finalise(RTC_HandleTypeDef *hrtc) {
 
 STATIC void RTC_CalendarConfig(void) {
     // set the date to 1st Jan 2015
-    RTC_DateTypeDef date;
+    RTC_DateTypeDef date = {0};
     date.Year = 15;
     date.Month = 1;
     date.Date = 1;
@@ -500,7 +500,7 @@ STATIC void RTC_CalendarConfig(void) {
     }
 
     // set the time to 00:00:00
-    RTC_TimeTypeDef time;
+    RTC_TimeTypeDef time = {0};
     time.Hours = 0;
     time.Minutes = 0;
     time.Seconds = 0;
@@ -519,8 +519,8 @@ uint64_t mp_hal_time_ns(void) {
     #if MICROPY_HW_ENABLE_RTC
     // Get current according to the RTC.
     rtc_init_finalise();
-    RTC_TimeTypeDef time;
-    RTC_DateTypeDef date;
+    RTC_TimeTypeDef time = {0};
+    RTC_DateTypeDef date = {0};
     HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
     ns = timeutils_seconds_since_epoch(2000 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
@@ -606,8 +606,8 @@ mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         // get date and time
         // note: need to call get time then get date to correctly access the registers
-        RTC_DateTypeDef date;
-        RTC_TimeTypeDef time;
+        RTC_DateTypeDef date = {0};
+        RTC_TimeTypeDef time = {0};
         HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
         HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
         mp_obj_t tuple[8] = {
@@ -626,14 +626,14 @@ mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
         mp_obj_t *items;
         mp_obj_get_array_fixed_n(args[1], 8, &items);
 
-        RTC_DateTypeDef date;
+        RTC_DateTypeDef date = {0};
         date.Year = mp_obj_get_int(items[0]) - 2000;
         date.Month = mp_obj_get_int(items[1]);
         date.Date = mp_obj_get_int(items[2]);
         date.WeekDay = mp_obj_get_int(items[3]);
         HAL_RTC_SetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
 
-        RTC_TimeTypeDef time;
+        RTC_TimeTypeDef time = {0};
         time.Hours = mp_obj_get_int(items[4]);
         time.Minutes = mp_obj_get_int(items[5]);
         time.Seconds = mp_obj_get_int(items[6]);

@@ -161,7 +161,7 @@ void can_deinit(pyb_can_obj_t *self) {
 }
 
 void can_clearfilter(pyb_can_obj_t *self, uint32_t f, uint8_t bank) {
-    CAN_FilterConfTypeDef filter;
+    CAN_FilterConfTypeDef filter = {0};
 
     filter.FilterIdHigh = 0;
     filter.FilterIdLow = 0;

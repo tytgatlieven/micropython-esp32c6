@@ -170,13 +170,13 @@ STATIC uint32_t pyb_can_get_source_freq() {
             can_kern_clk = HSE_VALUE;
             break;
         case RCC_FDCANCLKSOURCE_PLL: {
-            PLL1_ClocksTypeDef pll1_clocks;
+            PLL1_ClocksTypeDef pll1_clocks = {0};
             HAL_RCCEx_GetPLL1ClockFreq(&pll1_clocks);
             can_kern_clk = pll1_clocks.PLL1_Q_Frequency;
             break;
         }
         case RCC_FDCANCLKSOURCE_PLL2: {
-            PLL2_ClocksTypeDef pll2_clocks;
+            PLL2_ClocksTypeDef pll2_clocks = {0};
             HAL_RCCEx_GetPLL2ClockFreq(&pll2_clocks);
             can_kern_clk = pll2_clocks.PLL2_Q_Frequency;
             break;
@@ -522,7 +522,7 @@ STATIC mp_obj_t pyb_can_send(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
     }
 
     // send the data
-    CanTxMsgTypeDef tx_msg;
+    CanTxMsgTypeDef tx_msg = {0};
 
     #if MICROPY_HW_ENABLE_FDCAN
     uint8_t tx_data[CAN_MAX_DATA_FRAME];
@@ -583,7 +583,7 @@ STATIC mp_obj_t pyb_can_send(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
         tx_data[i] = ((byte *)bufinfo.buf)[i];
     }
 
-    HAL_StatusTypeDef status;
+    HAL_StatusTypeDef status = {0};
     #if MICROPY_HW_ENABLE_FDCAN
     uint32_t timeout_ms = args[ARG_timeout].u_int;
     uint32_t start = HAL_GetTick();
@@ -628,7 +628,7 @@ STATIC mp_obj_t pyb_can_recv(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     // receive the data
-    CanRxMsgTypeDef rx_msg;
+    CanRxMsgTypeDef rx_msg = {0};
     #if MICROPY_HW_ENABLE_FDCAN
     uint8_t rx_data[CAN_MAX_DATA_FRAME];
     #else
@@ -828,7 +828,7 @@ STATIC mp_obj_t pyb_can_setfilter(size_t n_args, const mp_obj_t *pos_args, mp_ma
         mp_obj_get_array(args[ARG_rtr].u_obj, &rtr_len, &rtr_flags);
     }
 
-    CAN_FilterConfTypeDef filter;
+    CAN_FilterConfTypeDef filter = {0};
     if (args[ARG_mode].u_int == MASK16 || args[ARG_mode].u_int == LIST16) {
         if (len != 4) {
             goto error;

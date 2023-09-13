@@ -1225,7 +1225,7 @@ STATIC mp_obj_t pyb_timer_channel(size_t n_args, const mp_obj_t *pos_args, mp_ma
 
         case CHANNEL_MODE_PWM_NORMAL:
         case CHANNEL_MODE_PWM_INVERTED: {
-            TIM_OC_InitTypeDef oc_config;
+            TIM_OC_InitTypeDef oc_config = {0};
             oc_config.OCMode = channel_mode_info[chan->mode].oc_mode;
             if (args[4].u_obj != mp_const_none) {
                 // pulse width percent given
@@ -1264,7 +1264,7 @@ STATIC mp_obj_t pyb_timer_channel(size_t n_args, const mp_obj_t *pos_args, mp_ma
         case CHANNEL_MODE_OC_TOGGLE:
         case CHANNEL_MODE_OC_FORCED_ACTIVE:
         case CHANNEL_MODE_OC_FORCED_INACTIVE: {
-            TIM_OC_InitTypeDef oc_config;
+            TIM_OC_InitTypeDef oc_config = {0};
             oc_config.OCMode = channel_mode_info[chan->mode].oc_mode;
             oc_config.Pulse = args[5].u_int;
             oc_config.OCPolarity = args[6].u_int;
@@ -1301,7 +1301,7 @@ STATIC mp_obj_t pyb_timer_channel(size_t n_args, const mp_obj_t *pos_args, mp_ma
         }
 
         case CHANNEL_MODE_IC: {
-            TIM_IC_InitTypeDef ic_config;
+            TIM_IC_InitTypeDef ic_config = {0};
 
             ic_config.ICPolarity = args[6].u_int;
             if (ic_config.ICPolarity == 0xffffffff) {
@@ -1326,7 +1326,7 @@ STATIC mp_obj_t pyb_timer_channel(size_t n_args, const mp_obj_t *pos_args, mp_ma
         case CHANNEL_MODE_ENC_A:
         case CHANNEL_MODE_ENC_B:
         case CHANNEL_MODE_ENC_AB: {
-            TIM_Encoder_InitTypeDef enc_config;
+            TIM_Encoder_InitTypeDef enc_config = {0};
 
             enc_config.EncoderMode = channel_mode_info[chan->mode].oc_mode;
             enc_config.IC1Polarity = args[6].u_int;

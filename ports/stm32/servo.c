@@ -136,7 +136,7 @@ STATIC void servo_init_channel(pyb_servo_obj_t *s) {
     }
 
     // PWM mode configuration
-    TIM_OC_InitTypeDef oc_init;
+    TIM_OC_InitTypeDef oc_init = {0};
     oc_init.OCMode = TIM_OCMODE_PWM1;
     oc_init.Pulse = s->pulse_cur; // units of 10us
     oc_init.OCPolarity = TIM_OCPOLARITY_HIGH;

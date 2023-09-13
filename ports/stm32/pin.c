@@ -373,7 +373,7 @@ STATIC mp_obj_t pin_obj_init_helper(const pin_obj_t *self, size_t n_args, const 
     }
 
     // configure the GPIO as requested
-    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitTypeDef GPIO_InitStructure = {0};
     GPIO_InitStructure.Pin = self->pin_mask;
     GPIO_InitStructure.Mode = mode;
     GPIO_InitStructure.Pull = pull;

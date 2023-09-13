@@ -431,7 +431,7 @@ set_clk:
     mp_hal_delay_ms(5);
 
     // Desired system clock source is in sysclk_source
-    RCC_ClkInitTypeDef RCC_ClkInitStruct;
+    RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
     #if defined(STM32G0) || defined(STM32G4)
     RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_ALL;
     #else
@@ -494,7 +494,7 @@ set_clk:
 
     // Re-configure PLL
     // Even if we don't use the PLL for the system clock, we still need it for USB, RNG and SDIO
-    RCC_OscInitTypeDef RCC_OscInitStruct;
+    RCC_OscInitTypeDef RCC_OscInitStruct = {0};
     RCC_OscInitStruct.OscillatorType = MICROPY_HW_RCC_OSCILLATOR_TYPE;
     RCC_OscInitStruct.HSEState = MICROPY_HW_RCC_HSE_STATE;
     RCC_OscInitStruct.HSIState = MICROPY_HW_RCC_HSI_STATE;

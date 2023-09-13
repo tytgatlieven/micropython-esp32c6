@@ -576,7 +576,7 @@ bool uart_init(pyb_uart_obj_t *uart_obj,
     uart_obj->uartx = UARTx;
 
     // Set the initialisation parameters for the UART.
-    UART_HandleTypeDef huart;
+    UART_HandleTypeDef huart = {0};
     memset(&huart, 0, sizeof(huart));
     huart.Instance = UARTx;
     huart.Init.BaudRate = baudrate;

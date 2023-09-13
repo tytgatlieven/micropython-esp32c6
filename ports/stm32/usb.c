@@ -568,7 +568,7 @@ STATIC mp_obj_t pyb_usb_mode(size_t n_args, const mp_obj_t *pos_args, mp_map_t *
     #endif
 
     // get hid info if user selected such a mode
-    USBD_HID_ModeInfoTypeDef hid_info;
+    USBD_HID_ModeInfoTypeDef hid_info = {0};
     #if MICROPY_HW_USB_HID
     if (mode & USBD_MODE_IFACE_HID) {
         mp_obj_t *items;

@@ -300,7 +300,7 @@ uint extint_register(mp_obj_t pin_obj, uint32_t mode, uint32_t pull, mp_obj_t ca
             extint_enable(v_line);
         } else {
             mp_hal_gpio_clock_enable(pin->gpio);
-            GPIO_InitTypeDef exti;
+            GPIO_InitTypeDef exti = {0};
             exti.Pin = pin->pin_mask;
             exti.Mode = mode;
             exti.Pull = pull;

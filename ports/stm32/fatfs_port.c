@@ -31,8 +31,8 @@
 MP_WEAK DWORD get_fattime(void) {
     #if MICROPY_HW_ENABLE_RTC
     rtc_init_finalise();
-    RTC_TimeTypeDef time;
-    RTC_DateTypeDef date;
+    RTC_TimeTypeDef time = {0};
+    RTC_DateTypeDef date = {0};
     HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
     return ((2000 + date.Year - 1980) << 25) | ((date.Month) << 21) | ((date.Date) << 16) | ((time.Hours) << 11) | ((time.Minutes) << 5) | (time.Seconds / 2);

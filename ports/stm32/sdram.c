@@ -53,9 +53,9 @@
 static void sdram_init_seq(SDRAM_HandleTypeDef *hsdram, FMC_SDRAM_CommandTypeDef *command);
 
 bool sdram_init(void) {
-    SDRAM_HandleTypeDef hsdram;
-    FMC_SDRAM_TimingTypeDef SDRAM_Timing;
-    FMC_SDRAM_CommandTypeDef command;
+    SDRAM_HandleTypeDef hsdram = {0};
+    FMC_SDRAM_TimingTypeDef SDRAM_Timing = {0};
+    FMC_SDRAM_CommandTypeDef command = {0};
 
     __HAL_RCC_FMC_CLK_ENABLE();
 

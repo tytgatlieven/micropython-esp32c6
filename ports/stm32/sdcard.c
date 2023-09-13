@@ -277,7 +277,7 @@ STATIC HAL_StatusTypeDef sdmmc_init_sd(void) {
     sdmmc_handle.sd.Init.ClockDiv = SDIO_TRANSFER_CLK_DIV;
 
     // init the SD interface, with retry if it's not ready yet
-    HAL_StatusTypeDef status;
+    HAL_StatusTypeDef status = {0};
     for (int retry = 10; (status = HAL_SD_Init(&sdmmc_handle.sd)) != HAL_OK; retry--) {
         if (retry == 0) {
             return status;
@@ -393,14 +393,14 @@ uint64_t sdcard_get_capacity_in_bytes(void) {
     switch (pyb_sdmmc_flags) {
         #if MICROPY_HW_ENABLE_SDCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_SD: {
-            HAL_SD_CardInfoTypeDef cardinfo;
+            HAL_SD_CardInfoTypeDef cardinfo = {0};
             HAL_SD_GetCardInfo(&sdmmc_handle.sd, &cardinfo);
             return (uint64_t)cardinfo.LogBlockNbr * (uint64_t)cardinfo.LogBlockSize;
         }
         #endif
         #if MICROPY_HW_ENABLE_MMCARD
         case PYB_SDMMC_FLAG_ACTIVE | PYB_SDMMC_FLAG_MMC: {
-            HAL_MMC_CardInfoTypeDef cardinfo;
+            HAL_MMC_CardInfoTypeDef cardinfo = {0};
             HAL_MMC_GetCardInfo(&sdmmc_handle.mmc, &cardinfo);
             return (uint64_t)cardinfo.LogBlockNbr * (uint64_t)cardinfo.LogBlockSize;
         }
@@ -529,7 +529,7 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
         uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
 
         #if SDIO_USE_GPDMA
-        DMA_HandleTypeDef sd_dma;
+        DMA_HandleTypeDef sd_dma = {0};
         dma_init(&sd_dma, &SDMMC_DMA, DMA_PERIPH_TO_MEMORY, &sdmmc_handle);
         #if MICROPY_HW_ENABLE_MMCARD
         if (pyb_sdmmc_flags & PYB_SDMMC_FLAG_MMC) {
@@ -625,7 +625,7 @@ mp_uint_t sdcard_write_blocks(const uint8_t *src, uint32_t block_num, uint32_t n
         uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
 
         #if SDIO_USE_GPDMA
-        DMA_HandleTypeDef sd_dma;
+        DMA_HandleTypeDef sd_dma = {0};
         dma_init(&sd_dma, &SDMMC_DMA, DMA_MEMORY_TO_PERIPH, &sdmmc_handle);
         #if MICROPY_HW_ENABLE_MMCARD
         if (pyb_sdmmc_flags & PYB_SDMMC_FLAG_MMC) {

@@ -51,8 +51,8 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
 #if defined(MBEDTLS_HAVE_TIME)
 time_t stm32_rtctime_seconds(time_t *timer) {
     rtc_init_finalise();
-    RTC_DateTypeDef date;
-    RTC_TimeTypeDef time;
+    RTC_DateTypeDef date = {0};
+    RTC_TimeTypeDef time = {0};
     HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
     return timeutils_seconds_since_epoch(2000 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);

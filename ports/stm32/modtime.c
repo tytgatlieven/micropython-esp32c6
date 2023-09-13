@@ -33,8 +33,8 @@ STATIC mp_obj_t mp_time_localtime_get(void) {
     // get current date and time
     // note: need to call get time then get date to correctly access the registers
     rtc_init_finalise();
-    RTC_DateTypeDef date;
-    RTC_TimeTypeDef time;
+    RTC_DateTypeDef date = {0};
+    RTC_TimeTypeDef time = {0};
     HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
     mp_obj_t tuple[8] = {
@@ -55,8 +55,8 @@ STATIC mp_obj_t mp_time_time_get(void) {
     // get date and time
     // note: need to call get time then get date to correctly access the registers
     rtc_init_finalise();
-    RTC_DateTypeDef date;
-    RTC_TimeTypeDef time;
+    RTC_DateTypeDef date = {0};
+    RTC_TimeTypeDef time = {0};
     HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
     HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
     return mp_obj_new_int(timeutils_seconds_since_epoch(2000 + date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds));
