@@ -120,6 +120,10 @@ USBD_StatusTypeDef  USBD_StdDevReq (USBD_HandleTypeDef *pdev , USBD_SetupReqType
 {
   USBD_StatusTypeDef ret = USBD_OK;
 
+    if ((req->bmRequest & 0xe0) == 0xc0) {
+      return pdev->pClass->Setup (pdev, req);
+    }
+
   switch (req->bRequest)
   {
   case USB_REQ_GET_DESCRIPTOR:
