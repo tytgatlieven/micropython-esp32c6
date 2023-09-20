@@ -1023,6 +1023,35 @@ __ALIGN_BEGIN static const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __AL
     HIBYTE(MBOOT_USBD_LANGID_STRING),
 };
 
+// Vendor code, can be anything.
+#define MSFT100_VENDOR_CODE (0x42)
+
+__ALIGN_BEGIN static const uint8_t msft100[18] __ALIGN_END = {
+    0x12, 0x03,
+    'M', 0x00,
+    'S', 0x00,
+    'F', 0x00,
+    'T', 0x00,
+    '1', 0x00,
+    '0', 0x00,
+    '0', 0x00,
+    MSFT100_VENDOR_CODE,
+    0x00,
+};
+
+__ALIGN_BEGIN static const uint8_t msft100_id[40] __ALIGN_END = {
+    0x28, 0x00, 0x00, 0x00,
+    0x00, 0x01, // 1.00
+    0x04, 0x00,
+    0x01,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00,
+    0x01,
+    'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
 static const uint8_t dev_descr[0x12] = {
     0x12, // bLength
     0x01, // bDescriptorType: Device
@@ -1131,6 +1160,10 @@ static uint8_t *pyb_usbdd_StrDescriptor(USBD_HandleTypeDef *pdev, uint8_t idx, u
             return str_desc;
         #endif
 
+        case 0xee:
+            *length = sizeof(msft100);
+            return (uint8_t *)msft100; // the data should only be read from this buf
+
         default:
             return NULL;
     }
@@ -1159,8 +1192,23 @@ static uint8_t pyb_usbdd_Setup(USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *r
     self->bRequest = req->bRequest;
     self->wValue = req->wValue;
     self->wLength = req->wLength;
+
+    if ((req->bmRequest & 0xe0) == 0xc0) {
+        // device-to-host vendor request
+        if (req->wIndex == 0x04 && req->bRequest == MSFT100_VENDOR_CODE) {
+            // Compatible ID Feature Descriptor
+            #if USE_USB_POLLING
+            self->tx_pending = true;
+            #endif
+            int len = MIN(req->wLength, 40);
+            memcpy(self->tx_buf, msft100_id, len);
+            USBD_CtlSendData(&self->hUSBDDevice, self->tx_buf, len);
+            return USBD_OK;
+        }
+    }
+
     if (req->bmRequest == 0x21) {
-        // host-to-device request
+        // host-to-device class request
         if (req->wLength == 0) {
             // no data, process command straight away
             dfu_handle_rx(self->bRequest, self->wValue, 0, NULL);
@@ -1169,7 +1217,7 @@ static uint8_t pyb_usbdd_Setup(USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *r
             USBD_CtlPrepareRx(pdev, self->rx_buf, req->wLength);
         }
     } else if (req->bmRequest == 0xa1) {
-        // device-to-host request
+        // device-to-host class request
         int len = dfu_handle_tx(self->bRequest, self->wValue, self->wLength, self->tx_buf, USB_XFER_SIZE);
         if (len >= 0) {
             #if USE_USB_POLLING
