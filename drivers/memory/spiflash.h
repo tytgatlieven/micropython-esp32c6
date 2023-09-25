@@ -71,7 +71,7 @@ typedef struct _mp_spiflash_t {
     volatile uint32_t flags;
 } mp_spiflash_t;
 
-void mp_spiflash_init(mp_spiflash_t *self);
+int mp_spiflash_init(mp_spiflash_t *self);
 void mp_spiflash_deepsleep(mp_spiflash_t *self, int value);
 
 // These functions go direct to the SPI flash device

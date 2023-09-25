@@ -35,6 +35,7 @@
 #define USE_WR_DELAY (1)
 
 #define CMD_WRSR        (0x01)
+#define CMD_WRCR        (0x31)
 #define CMD_WRITE       (0x02)
 #define CMD_READ        (0x03)
 #define CMD_RDSR        (0x05)
@@ -164,7 +165,8 @@ static inline void mp_spiflash_deepsleep_internal(mp_spiflash_t *self, int value
     mp_spiflash_write_cmd(self, value ? 0xb9 : 0xab); // sleep/wake
 }
 
-void mp_spiflash_init(mp_spiflash_t *self) {
+int mp_spiflash_init(mp_spiflash_t *self) {
+    int ret = 0;
     self->flags = 0;
 
     if (self->config->bus_kind == MP_SPIFLASH_BUS_SPI) {
@@ -183,17 +185,17 @@ void mp_spiflash_init(mp_spiflash_t *self) {
     #if defined(CHECK_DEVID)
     // Validate device id
     uint32_t devid;
-    int ret = mp_spiflash_read_cmd(self, CMD_RD_DEVID, 3, &devid);
+    ret = mp_spiflash_read_cmd(self, CMD_RD_DEVID, 3, &devid);
     if (ret != 0 || devid != CHECK_DEVID) {
         mp_spiflash_release_bus(self);
-        return;
+        return -2;
     }
     #endif
 
     if (self->config->bus_kind == MP_SPIFLASH_BUS_QSPI) {
         // Set QE bit
         uint32_t sr = 0, cr = 0;
-        int ret = mp_spiflash_read_cmd(self, CMD_RDSR, 1, &sr);
+        ret = mp_spiflash_read_cmd(self, CMD_RDSR, 1, &sr);
         if (ret == 0) {
             ret = mp_spiflash_read_cmd(self, CMD_RDCR, 1, &cr);
         }
@@ -201,12 +203,21 @@ void mp_spiflash_init(mp_spiflash_t *self) {
         if (ret == 0 && !(data & (QSPI_QE_MASK << 8))) {
             data |= QSPI_QE_MASK << 8;
             mp_spiflash_write_cmd(self, CMD_WREN);
+            // Some devices expect both SR and CR to be written in one operation
             mp_spiflash_write_cmd_data(self, CMD_WRSR, 2, data);
+            // Other devices have a separate command to write CR
+            mp_spiflash_write_cmd_data(self, CMD_WRCR, 1, QSPI_QE_MASK);
             mp_spiflash_wait_wip0(self);
+        }
+        ret = mp_spiflash_read_cmd(self, CMD_RDCR, 1, &cr);
+        if (!(cr & QSPI_QE_MASK)) {
+            // QE (quad enable) bit is not set
+            ret = -1;
         }
     }
 
     mp_spiflash_release_bus(self);
+    return ret;
 }
 
 void mp_spiflash_deepsleep(mp_spiflash_t *self, int value) {
