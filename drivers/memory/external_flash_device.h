@@ -93,6 +93,24 @@ typedef struct _external_flash_device {
         .single_status_byte = false, \
 }
 
+// Settings for the Renesas AT25SF161B 2MiB SPI flash.
+// Datasheet: https://www.renesas.com/us/en/document/dst/at25sf161b-datasheet?r=1608796
+#define AT25SF161B { \
+        .total_size = (1 << 21), /* 2 MiB */ \
+        .start_up_time_us = 5000, \
+        .manufacturer_id = 0x1f, \
+        .memory_type = 0x86, \
+        .capacity = 0x01, \
+        .max_clock_speed_mhz = 133, \
+        .quad_enable_bit_mask = 0x02, \
+        .has_sector_protection = true, \
+        .supports_fast_read = true, \
+        .supports_qspi = true, \
+        .supports_qspi_writes = true, \
+        .write_status_register_split = true, \
+        .single_status_byte = false, \
+}
+
 // Settings for the Renesas AT25SF641B 8MiB SPI flash.
 // Datasheet: https://www.renesas.com/us/en/document/dst/at25sf641b-datasheet?r=1608816
 #define AT25SF641B { \
@@ -107,7 +125,7 @@ typedef struct _external_flash_device {
         .supports_fast_read = true, \
         .supports_qspi = true, \
         .supports_qspi_writes = true, \
-        .write_status_register_split = false, \
+        .write_status_register_split = true, \
         .single_status_byte = false, \
 }
 
