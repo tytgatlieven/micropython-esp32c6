@@ -39,12 +39,30 @@ enum {
     MP_QSPI_IOCTL_BUS_RELEASE,
 };
 
+typedef struct _mp_qspi_mode {
+    enum {
+        MP_QSPI_LINE_111, // cmd, address and data on 1 line
+        MP_QSPI_LINE_122, // cmd 1 line, address and data on 2 lines
+        MP_QSPI_LINE_144, // cmd 1 line, address and data on 4 lines
+    } line : 3;
+    enum {
+        MP_QSPI_DUMMY_CYC_0,
+        MP_QSPI_DUMMY_CYC_4,
+        MP_QSPI_DUMMY_CYC_8,
+    } dummy : 3;  // dummy clock cycles
+
+    enum {
+        MP_QSPI_ALTBYTE_0,
+        MP_QSPI_ALTBYTE_1,
+    } alt : 2;  // alternate bytes
+} mp_qspi_mode_t;
+
 typedef struct _mp_qspi_proto_t {
     int (*ioctl)(void *self, uint32_t cmd);
     int (*write_cmd_data)(void *self, uint8_t cmd, size_t len, uint32_t data);
     int (*write_cmd_addr_data)(void *self, uint8_t cmd, uint32_t addr, size_t len, const uint8_t *src);
     int (*read_cmd)(void *self, uint8_t cmd, size_t len, uint32_t *dest);
-    int (*read_cmd_qaddr_qdata)(void *self, uint8_t cmd, uint32_t addr, size_t len, uint8_t *dest);
+    int (*read_cmd_qaddr_qdata)(void *self, uint8_t cmd, uint32_t addr, size_t len, uint8_t *dest, mp_qspi_mode_t mode);
 } mp_qspi_proto_t;
 
 typedef struct _mp_soft_qspi_obj_t {

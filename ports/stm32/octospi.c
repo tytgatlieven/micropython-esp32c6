@@ -269,7 +269,7 @@ STATIC int octospi_read_cmd(void *self_in, uint8_t cmd, size_t len, uint32_t *de
     return 0;
 }
 
-STATIC int octospi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_t addr, size_t len, uint8_t *dest) {
+STATIC int octospi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_t addr, size_t len, uint8_t *dest, unit8_t mode) {
     (void)self_in;
 
     #if defined(MICROPY_HW_OSPIFLASH_IO1) && !defined(MICROPY_HW_OSPIFLASH_IO2) && !defined(MICROPY_HW_OSPIFLASH_IO4)

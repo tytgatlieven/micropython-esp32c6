@@ -194,8 +194,17 @@ STATIC int mp_soft_qspi_read_cmd_qaddr_qdata(void *self_in, uint8_t cmd, uint32_
     uint8_t addr_len = mp_spi_set_addr_buff(&cmd_buf[1], addr);
     CS_LOW(self);
     mp_soft_qspi_transfer(self, 1, cmd_buf, NULL);
-    mp_soft_qspi_qwrite(self, addr_len + 3, &cmd_buf[1]); // 3/4 addr bytes, 1 extra byte (0), 2 dummy bytes (4 dummy cycles)
-    mp_soft_qspi_qread(self, len, dest);
+    if (mode.line == MP_QSPI_MODE_111) {
+        // cmd, address and data on 1 line
+        mp_soft_qspi_transfer(self, addr_len + 1, &cmd_buf[1], NULL); // 3 addr bytes, 1 dummy byte (8 dummy cycles)
+        mp_soft_qspi_transfer(self, len, NULL, dest);
+    } else if (mode.line == MP_QSPI_MODE_144) {
+        // cmd 1 line, address and data on 4 lines
+        mp_soft_qspi_qwrite(self, addr_len + 3, &cmd_buf[1]); // 3/4 addr bytes, 1 extra byte (0), 2 dummy bytes (4 dummy cycles)
+        mp_soft_qspi_qread(self, len, dest);
+    } else {
+
+    }
     CS_HIGH(self);
     return 0;
 }
