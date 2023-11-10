@@ -92,6 +92,11 @@
 #define  USB_REQ_SET_INTERFACE                          0x0B
 #define  USB_REQ_SYNCH_FRAME                            0x0C
 
+#define  USB_REQ_MSFT_MASK                              0xE0
+#define  USB_REQ_MSFT_REQ                               0xC0
+// Vendor code, can be anything.
+#define  USB_MSFT100_VENDOR_CODE                        0x42
+
 #define  USB_DESC_TYPE_DEVICE                              1
 #define  USB_DESC_TYPE_CONFIGURATION                       2
 #define  USB_DESC_TYPE_STRING                              3

@@ -128,6 +128,20 @@
 #define CONFIG_DESC_MAXPOWER (0xfa) // 500mA in units of 2mA
 #endif
 
+
+__ALIGN_BEGIN static const uint8_t msft100_id[40] __ALIGN_END = {
+    0x28, 0x00, 0x00, 0x00,
+    0x00, 0x01, // 1.00
+    0x04, 0x00,
+    0x01,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00,
+    0x01,
+    'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
 #if USBD_SUPPORT_HS_MODE
 // USB Standard Device Descriptor
 __ALIGN_BEGIN static uint8_t USBD_CDC_MSC_HID_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END = {
@@ -205,9 +219,9 @@ static const uint8_t cdc_class_desc_data[CDC_CLASS_DESC_SIZE] = {
     USB_DESC_TYPE_ASSOCIATION, // bDescriptorType: IAD
     0x00,   // bFirstInterface: first interface for this association -- to be filled in
     0x02,   // bInterfaceCount: number of interfaces for this association
-    0x02,   // bFunctionClass: Communication Interface Class
-    0x02,   // bFunctionSubClass: Abstract Control Model
-    0x01,   // bFunctionProtocol: Common AT commands
+    0x00,   // bFunctionClass: Communication Interface Class
+    0x00,   // bFunctionSubClass: Abstract Control Model
+    0x00,   // bFunctionProtocol: Common AT commands
     0x00,   // iFunction: index of string for this function
 
     //--------------------------------------------------------------------------
@@ -827,6 +841,17 @@ static uint8_t USBD_CDC_MSC_HID_Setup(USBD_HandleTypeDef *pdev, USBD_SetupReqTyp
     uint8_t mode = usbd->usbd_mode;
     uint8_t recipient = 0;
     usbd_cdc_state_t *cdc = NULL;
+    if ((req->bmRequest & USB_REQ_MSFT_MASK) == USB_REQ_MSFT_REQ) {
+        // device-to-host vendor request
+        if (req->wIndex == 0x04 && req->bRequest == USB_MSFT100_VENDOR_CODE) {
+            // Compatible ID Feature Descriptor
+            int len = MIN(req->wLength, 40);
+            // memcpy(self->tx_buf, msft100_id, len);
+            USBD_CtlSendData(pdev, (uint8_t *)msft100_id, len);
+            return USBD_OK;
+        }
+    }
+
     switch (req->bmRequest & USB_REQ_RECIPIENT_MASK) {
         case USB_REQ_RECIPIENT_INTERFACE: {
             uint16_t iface = req->wIndex;

@@ -46,6 +46,20 @@ __ALIGN_BEGIN static const uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __AL
     HIBYTE(MICROPY_HW_USB_LANGID_STRING),
 };
 
+
+__ALIGN_BEGIN static const uint8_t msft100[18] __ALIGN_END = {
+    0x12, 0x03,
+    'M', 0x00,
+    'S', 0x00,
+    'F', 0x00,
+    'T', 0x00,
+    '1', 0x00,
+    '0', 0x00,
+    '0', 0x00,
+    USB_MSFT100_VENDOR_CODE,
+    0x00,
+};
+
 // set the VID, PID and device release number
 void USBD_SetVIDPIDRelease(usbd_cdc_msc_hid_state_t *usbd, uint16_t vid, uint16_t pid, uint16_t device_release_num, int cdc_only) {
     uint8_t *dev_desc = &usbd->usbd_device_desc[0];
@@ -173,6 +187,10 @@ STATIC uint8_t *USBD_StrDescriptor(USBD_HandleTypeDef *pdev, uint8_t idx, uint16
             str = MICROPY_HW_USB_INTERFACE_CDC2_STRING;
             break;
         #endif
+
+        case 0xee:
+            *length = sizeof(msft100);
+            return (uint8_t *)msft100; // the data should only be read from this buf
 
         default:
             // invalid string index
