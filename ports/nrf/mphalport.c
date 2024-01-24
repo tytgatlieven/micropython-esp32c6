@@ -220,16 +220,19 @@ void mp_hal_stdout_tx_str(const char *str) {
 void mp_hal_delay_us(mp_uint_t us) {
     uint32_t now;
     if (us == 0) {
+        MICROPY_EVENT_POLL_HOOK
         return;
     }
     now = mp_hal_ticks_us();
     while (mp_hal_ticks_us() - now < us) {
+        MICROPY_EVENT_POLL_HOOK
     }
 }
 
 void mp_hal_delay_ms(mp_uint_t ms) {
     uint32_t now;
     if (ms == 0) {
+        MICROPY_EVENT_POLL_HOOK
         return;
     }
     now = mp_hal_ticks_ms();

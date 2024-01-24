@@ -26,7 +26,7 @@
 
 #include "py/mphal.h"
 
-#if MICROPY_PY_MACHINE_SOFT_PWM
+#if MICROPY_PY_TICKER
 
 #include "ticker.h"
 #include "nrfx_glue.h"
@@ -166,4 +166,4 @@ void SlowTicker_IRQHandler(void)
     }
 }
 
-#endif // MICROPY_PY_MACHINE_SOFT_PWM
+#endif // MICROPY_PY_TICKER

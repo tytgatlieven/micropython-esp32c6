@@ -178,6 +178,9 @@
 #define MICROPY_PY_MACHINE_BOOTLOADER (1)
 #define MICROPY_PY_MACHINE_PULSE    (0)
 #define MICROPY_PY_MACHINE_SOFTI2C  (MICROPY_PY_MACHINE_I2C)
+#ifndef MICROPY_ENABLE_SCHEDULER
+#define MICROPY_ENABLE_SCHEDULER    (1)
+#endif
 
 #ifndef MICROPY_HW_LED_COUNT
 #define MICROPY_HW_LED_COUNT        (0)
@@ -239,6 +242,16 @@
 
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF   (1)
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE  (0)
+
+#define MICROPY_PY_TICKER (MICROPY_PY_MACHINE_SOFT_PWM || MICROPY_PY_BLUETOOTH)
+
+#ifndef MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE
+#define MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE (1)
+#endif
+
+#ifndef MICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS
+#define MICROPY_PY_BLUETOOTH_ENABLE_L2CAP_CHANNELS (MICROPY_BLUETOOTH_NIMBLE)
+#endif
 
 // if sdk is in use, import configuration and enable some core features
 #if BLUETOOTH_SD
@@ -348,6 +361,30 @@ long unsigned int rng_generate_random_word(void);
 
 #ifndef MP_NEED_LOG2
 #define MP_NEED_LOG2                (1)
+
+// We have inlined IRQ functions for efficiency (they are generally
+// 1 machine instruction).
+//
+// Note on IRQ state: you should not need to know the specific
+// value of the state variable, but rather just pass the return
+// value from disable_irq back to enable_irq.  If you really need
+// to know the machine-specific values, see irq.h.
+
+#include <nrf.h>
+
+static inline void enable_irq(mp_uint_t state) {
+    __set_PRIMASK(state);
+}
+
+static inline mp_uint_t disable_irq(void) {
+    mp_uint_t state = __get_PRIMASK();
+    __disable_irq();
+    return state;
+}
+
+#define MICROPY_BEGIN_ATOMIC_SECTION()     disable_irq()
+#define MICROPY_END_ATOMIC_SECTION(state)  enable_irq(state)
+
 #endif
 
 #ifndef MICROPY_BOARD_STARTUP
