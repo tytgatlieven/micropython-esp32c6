@@ -92,7 +92,7 @@ void octospi_init(void) {
     OCTOSPI1->CR |= OCTOSPI_CR_EN;
 }
 
-STATIC int octospi_ioctl(void *self_in, uint32_t cmd) {
+STATIC int octospi_ioctl(void *self_in, uint32_t cmd, uint32_t arg) {
     (void)self_in;
     switch (cmd) {
         case MP_QSPI_IOCTL_INIT:
