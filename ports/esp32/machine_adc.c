@@ -30,7 +30,7 @@
 
 #include "py/mphal.h"
 #include "adc.h"
-#include "driver/adc.h"
+#include "hal/adc_types.h"
 
 #define ADCBLOCK1 (&madcblock_obj[0])
 #define ADCBLOCK2 (&madcblock_obj[1])
@@ -123,14 +123,15 @@ static const machine_adc_obj_t madc_obj[] = {
 // can be distinguished from the initialised state.
 static uint8_t madc_obj_atten[MP_ARRAY_SIZE(madc_obj)];
 
-static inline adc_atten_t madc_atten_get(const machine_adc_obj_t *self) {
-    uint8_t value = madc_obj_atten[self - &madc_obj[0]];
-    return value == 0 ? ADC_ATTEN_MAX : value - 1;
-}
+// static inline adc_atten_t madc_atten_get(const machine_adc_obj_t *self) {
+//     uint8_t value = madc_obj_atten[self - &madc_obj[0]];
+//     return value == 0 ? ADC_ATTEN_MAX : value - 1;
+// }
 
-static inline void madc_atten_set(const machine_adc_obj_t *self, adc_atten_t atten) {
-    madc_obj_atten[self - &madc_obj[0]] = atten + 1;
-}
+// static inline void madc_atten_set(const machine_adc_obj_t *self, adc_atten_t atten) {
+//     madc_obj_atten[self - &madc_obj[0]] = atten + 1;
+// }
+
 
 const machine_adc_obj_t *madc_search_helper(machine_adc_block_obj_t *block, adc_channel_t channel_id, gpio_num_t gpio_id) {
     for (int i = 0; i < MP_ARRAY_SIZE(madc_obj); i++) {
@@ -144,25 +145,20 @@ const machine_adc_obj_t *madc_search_helper(machine_adc_block_obj_t *block, adc_
 
 static void mp_machine_adc_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     const machine_adc_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    mp_printf(print, "ADC(Pin(%u), atten=%u)", self->gpio_id, madc_atten_get(self));
+    mp_printf(print, "ADC(Pin(%u), atten=%u, bits=%u)", self->gpio_id, self->esp_oneshot_channel_config.atten, self->esp_oneshot_channel_config.bitwidth);
 }
 
-static void madc_atten_helper(const machine_adc_obj_t *self, mp_int_t atten) {
-    esp_err_t err;
-    if (self->block->unit_id == ADC_UNIT_1) {
-        err = adc1_config_channel_atten(self->channel_id, atten);
-    } else {
-        #if (SOC_ADC_PERIPH_NUM >= 2)
-        err = adc2_config_channel_atten(self->channel_id, atten);
-        #endif
-    }
-    if (err != ESP_OK) {
-        mp_raise_ValueError(MP_ERROR_TEXT("invalid atten"));
-    }
-    madc_atten_set(self, atten);
-}
+// static void madc_atten_helper(const machine_adc_obj_t *self, mp_int_t atten) {
+//     if (atten == ADC_ATTEN_MAX) {
+//         atten = ADC_ATTEN_DB_0;
+//     }
+//     
+//     self->esp_oneshot_channel_config.atten = atten;
+//     madc_channel_init_helper(self);
+// }
 
-void madc_init_helper(const machine_adc_obj_t *self, size_t n_pos_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+void madc_init_helper(const machine_adc_obj_t* self, size_t n_pos_args, const mp_obj_t* pos_args, mp_map_t* kw_args)
+{
     enum {
         ARG_atten,
     };
@@ -174,12 +170,11 @@ void madc_init_helper(const machine_adc_obj_t *self, size_t n_pos_args, const mp
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_pos_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    mp_int_t atten = args[ARG_atten].u_int;
-    if (atten != -1) {
-        madc_atten_helper(self, atten);
-    } else if (madc_atten_get(self) == ADC_ATTEN_MAX) {
-        madc_atten_helper(self, ADC_ATTEN_DB_0);
-    }
+    // mp_int_t atten = args[ARG_atten].u_int;
+    
+    // if (atten != -1) {
+    //     madc_atten_helper(self, atten);
+    
 }
 
 static void mp_machine_adc_init_helper(machine_adc_obj_t *self, size_t n_pos_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -189,20 +184,20 @@ static void mp_machine_adc_init_helper(machine_adc_obj_t *self, size_t n_pos_arg
 static mp_obj_t mp_machine_adc_make_new(const mp_obj_type_t *type, size_t n_pos_args, size_t n_kw_args, const mp_obj_t *args) {
     mp_arg_check_num(n_pos_args, n_kw_args, 1, MP_OBJ_FUN_ARGS_MAX, true);
     gpio_num_t gpio_id = machine_pin_get_id(args[0]);
-    const machine_adc_obj_t *self = madc_search_helper(NULL, -1, gpio_id);
+    machine_adc_obj_t *self = madc_search_helper(NULL, -1, gpio_id);
     if (!self) {
         mp_raise_ValueError(MP_ERROR_TEXT("invalid pin"));
     }
 
-    if (self->block->width == -1) {
-        madcblock_bits_helper(self->block, self->block->bits);
-    }
-
+    madc_channel_init_helper(self);
+    
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw_args, args + n_pos_args);
     madc_init_helper(self, n_pos_args - 1, args + 1, &kw_args);
+    
+    const machine_adc_obj_t *self_const = (const machine_adc_obj_t*) self;
 
-    return MP_OBJ_FROM_PTR(self);
+    return MP_OBJ_FROM_PTR(self_const);
 }
 
 static mp_obj_t mp_machine_adc_block(machine_adc_obj_t *self) {
@@ -210,27 +205,28 @@ static mp_obj_t mp_machine_adc_block(machine_adc_obj_t *self) {
 }
 
 static mp_int_t mp_machine_adc_read(machine_adc_obj_t *self) {
-    mp_int_t raw = madcblock_read_helper(self->block, self->channel_id);
+    mp_int_t raw = madcblock_read_helper(self);
     return raw;
 }
 
 static mp_int_t mp_machine_adc_read_u16(machine_adc_obj_t *self) {
-    mp_uint_t raw = madcblock_read_helper(self->block, self->channel_id);
+    mp_uint_t raw = madcblock_read_helper(self);
     // Scale raw reading to 16 bit value using a Taylor expansion (for 8 <= bits <= 16)
-    mp_int_t bits = self->block->bits;
+    mp_int_t bits = self->esp_oneshot_channel_config.bitwidth;
     mp_uint_t u16 = raw << (16 - bits) | raw >> (2 * bits - 16);
     return u16;
 }
 
 static mp_int_t mp_machine_adc_read_uv(machine_adc_obj_t *self) {
-    adc_atten_t atten = madc_atten_get(self);
-    return madcblock_read_uv_helper(self->block, self->channel_id, atten);
+    return madcblock_read_uv_helper(self);
 }
 
 static void mp_machine_adc_atten_set(machine_adc_obj_t *self, mp_int_t atten) {
-    madc_atten_helper(self, atten);
+    self->esp_oneshot_channel_config.atten = atten;
+    madc_channel_init_helper(self);
 }
 
 static void mp_machine_adc_width_set(machine_adc_obj_t *self, mp_int_t width) {
-    madcblock_bits_helper(self->block, width);
+    self->esp_oneshot_channel_config.bitwidth = width;
+    madc_channel_init_helper(self);
 }

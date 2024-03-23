@@ -27,66 +27,68 @@
 
 #include "py/mphal.h"
 #include "adc.h"
-#include "driver/adc.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
+#include "hal/adc_types.h"
 
 #define DEFAULT_VREF 1100
 
-void madcblock_bits_helper(machine_adc_block_obj_t *self, mp_int_t bits) {
-    switch (bits) {
+void madc_channel_init_helper(machine_adc_obj_t *self) {
+    // adc_cali_handle_t handle = NULL;
+
+    adc_cali_curve_fitting_config_t cali_config = {
+        .unit_id = self->block->unit_id,
+        .chan = self->channel_id,
+        .atten = self->esp_oneshot_channel_config.atten,
+        .bitwidth = self->esp_oneshot_channel_config.bitwidth,
+    };
+    
+    switch (self->esp_oneshot_channel_config.bitwidth) {
         #if CONFIG_IDF_TARGET_ESP32
         case 9:
-            self->width = ADC_WIDTH_BIT_9;
+            self->esp_oneshot_channel_config.bitwidth = ADC_BITWIDTH_9;
             break;
         case 10:
-            self->width = ADC_WIDTH_BIT_10;
+            self->esp_oneshot_channel_config.bitwidth = ADC_BITWIDTH_10;
             break;
         case 11:
-            self->width = ADC_WIDTH_BIT_11;
+            self->esp_oneshot_channel_config.bitwidthh = ADC_BITWIDTH_11;
             break;
         #endif
-        #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
+        #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C6 
         case 12:
-            self->width = ADC_WIDTH_BIT_12;
+            self->esp_oneshot_channel_config.bitwidth = ADC_BITWIDTH_12;
             break;
         #endif
         #if CONFIG_IDF_TARGET_ESP32S2
         case 13:
-            self->width = ADC_WIDTH_BIT_13;
+            self->esp_oneshot_channel_config.bitwidth = ADC_BITWIDTH_13;
             break;
         #endif
         default:
-            mp_raise_ValueError(MP_ERROR_TEXT("invalid bits"));
+            mp_raise_ValueError(MP_ERROR_TEXT("invalid bits."));
     }
-    self->bits = bits;
-
-    if (self->unit_id == ADC_UNIT_1) {
-        adc1_config_width(self->width);
-    }
-    for (adc_atten_t atten = ADC_ATTEN_DB_0; atten < ADC_ATTEN_MAX; atten++) {
-        if (self->characteristics[atten] != NULL) {
-            esp_adc_cal_characterize(self->unit_id, atten, self->width, DEFAULT_VREF, self->characteristics[atten]);
-        }
-    }
+    
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(self->block->adc_handle, self->channel_id, &self->esp_oneshot_channel_config));
+    
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&cali_config, &self->characteristics[self->esp_oneshot_channel_config.atten]));
 }
 
-mp_int_t madcblock_read_helper(machine_adc_block_obj_t *self, adc_channel_t channel_id) {
+mp_int_t madcblock_read_helper(machine_adc_obj_t *self) {
     int raw;
-    if (self->unit_id == ADC_UNIT_1) {
-        raw = adc1_get_raw(channel_id);
-    } else {
-        check_esp_err(adc2_get_raw(channel_id, self->width, &raw));
-    }
+    ESP_ERROR_CHECK(adc_oneshot_read(self->block->adc_handle, self->channel_id, &raw));
     return raw;
 }
 
-mp_int_t madcblock_read_uv_helper(machine_adc_block_obj_t *self, adc_channel_t channel_id, adc_atten_t atten) {
-    int raw = madcblock_read_helper(self, channel_id);
-    esp_adc_cal_characteristics_t *adc_chars = self->characteristics[atten];
-    if (adc_chars == NULL) {
-        adc_chars = malloc(sizeof(esp_adc_cal_characteristics_t));
-        esp_adc_cal_characterize(self->unit_id, atten, self->width, DEFAULT_VREF, adc_chars);
-        self->characteristics[atten] = adc_chars;
-    }
-    mp_int_t uv = esp_adc_cal_raw_to_voltage(raw, adc_chars) * 1000;
-    return uv;
+mp_int_t madcblock_read_uv_helper(machine_adc_obj_t *self) {
+    int raw = madcblock_read_helper(self);
+    mp_int_t m_uv;
+    int uv;
+    
+    ESP_ERROR_CHECK(adc_cali_raw_to_voltage(self->characteristics[self->channel_id], raw, &uv));
+    
+    m_uv = (mp_int_t)uv;
+
+    return m_uv * 1000;
 }

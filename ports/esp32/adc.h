@@ -29,7 +29,9 @@
 #define MICROPY_INCLUDED_ESP32_ADC_H
 
 #include "py/runtime.h"
-#include "esp_adc_cal.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_oneshot.h"
+#include "hal/adc_types.h"
 
 #define ADC_ATTEN_MAX SOC_ADC_ATTEN_NUM
 
@@ -37,8 +39,7 @@ typedef struct _machine_adc_block_obj_t {
     mp_obj_base_t base;
     adc_unit_t unit_id;
     mp_int_t bits;
-    adc_bits_width_t width;
-    esp_adc_cal_characteristics_t *characteristics[ADC_ATTEN_MAX];
+    adc_oneshot_unit_handle_t adc_handle;
 } machine_adc_block_obj_t;
 
 typedef struct _machine_adc_obj_t {
@@ -46,13 +47,15 @@ typedef struct _machine_adc_obj_t {
     machine_adc_block_obj_t *block;
     adc_channel_t channel_id;
     gpio_num_t gpio_id;
+    adc_oneshot_chan_cfg_t esp_oneshot_channel_config;
+    adc_cali_handle_t characteristics[ADC_ATTEN_MAX];
 } machine_adc_obj_t;
 
 extern machine_adc_block_obj_t madcblock_obj[];
 
-void madcblock_bits_helper(machine_adc_block_obj_t *self, mp_int_t bits);
-mp_int_t madcblock_read_helper(machine_adc_block_obj_t *self, adc_channel_t channel_id);
-mp_int_t madcblock_read_uv_helper(machine_adc_block_obj_t *self, adc_channel_t channel_id, adc_atten_t atten);
+void madc_channel_init_helper(machine_adc_obj_t* self);
+mp_int_t madcblock_read_helper(machine_adc_obj_t *self);
+mp_int_t madcblock_read_uv_helper(machine_adc_obj_t *self);
 
 const machine_adc_obj_t *madc_search_helper(machine_adc_block_obj_t *block, adc_channel_t channel_id, gpio_num_t gpio_id);
 void madc_init_helper(const machine_adc_obj_t *self, size_t n_pos_args, const mp_obj_t *pos_args, mp_map_t *kw_args);

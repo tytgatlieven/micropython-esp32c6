@@ -29,28 +29,30 @@
 
 #include "py/mphal.h"
 #include "adc.h"
-#include "driver/adc.h"
+#include "hal/adc_types.h"
+#include "esp_adc/adc_oneshot.h"
+
+#define ADCBLOCK1 (&madcblock_obj[0].adc_handle)
+#define ADCBLOCK2 (madcblock_obj[1].adc_handle)
+
+adc_oneshot_unit_handle_t adc_oneshot_unit1_handle, adc_oneshot_unit2_handle;
 
 machine_adc_block_obj_t madcblock_obj[] = {
-    #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
-    {{&machine_adc_block_type}, ADC_UNIT_1, 12, -1, {0}},
-    {{&machine_adc_block_type}, ADC_UNIT_2, 12, -1, {0}},
+    #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C6
+    {{&machine_adc_block_type}, ADC_UNIT_1, 12, NULL},
+    {{&machine_adc_block_type}, ADC_UNIT_2, 12, NULL},
     #elif CONFIG_IDF_TARGET_ESP32S2
-    {{&machine_adc_block_type}, ADC_UNIT_1, 13, -1, {0}},
-    {{&machine_adc_block_type}, ADC_UNIT_2, 13, -1, {0}},
+    {{&machine_adc_block_type}, ADC_UNIT_1, 13, NULL},
+    {{&machine_adc_block_type}, ADC_UNIT_2, 13, NULL},
     #endif
 };
 
 static void mp_machine_adc_block_print(const mp_print_t *print, machine_adc_block_obj_t *self) {
-    mp_printf(print, "ADCBlock(%u, bits=%u)", self->unit_id, self->bits);
+    mp_printf(print, "ADCBlock(%u)", self->unit_id);
 }
 
 static void mp_machine_adc_block_bits_set(machine_adc_block_obj_t *self, mp_int_t bits) {
-    if (bits != -1) {
-        madcblock_bits_helper(self, bits);
-    } else if (self->width == -1) {
-        madcblock_bits_helper(self, self->bits);
-    }
+    self->bits = bits;
 }
 
 static machine_adc_block_obj_t *mp_machine_adc_block_get(mp_int_t unit) {
